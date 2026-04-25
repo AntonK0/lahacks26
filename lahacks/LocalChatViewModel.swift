@@ -125,18 +125,27 @@ final class LocalChatViewModel {
     }
 
     private static func chatPrompt(from messages: [ChatMessage]) -> String {
-        let transcript = messages
-            .map { "\($0.role.promptLabel): \($0.text)" }
-            .joined(separator: "\n")
+        var prompt = """
+        <start_of_turn>user
+        You are a helpful, concise local tutor running on the user's iOS device. Answer clearly and keep the conversation natural. Return only the final answer. Do not include hidden reasoning, analysis, internal monologue, channel tags, or thinking process.<end_of_turn>
 
-        return """
-        You are a helpful, concise local tutor running on the user's iOS device.
-        Answer clearly and keep the conversation natural.
-        Return only the final answer for the user.
-        Do not include hidden reasoning, analysis, internal monologue, channel tags, or thinking process.
-
-        \(transcript)
-        Gemma:
         """
+
+        for message in messages {
+            if message.role == .assistant && message.text.isEmpty {
+                continue
+            }
+
+            let roleString = message.role == .user ? "user" : "model"
+            prompt += """
+            <start_of_turn>\(roleString)
+            \(message.text)<end_of_turn>
+
+            """
+        }
+
+        prompt += "<start_of_turn>model\n"
+
+        return prompt
     }
 }

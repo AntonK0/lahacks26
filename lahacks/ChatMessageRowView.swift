@@ -16,7 +16,7 @@ struct ChatMessageRowView: View {
 
                 Group {
                     if message.text.isEmpty {
-                        ProgressView("Gemma is thinking")
+                        ProgressView("Generating answer")
                     } else {
                         Text(message.text)
                             .textSelection(.enabled)
@@ -28,7 +28,7 @@ struct ChatMessageRowView: View {
                 .background(message.role == .user ? .blue : .gray.opacity(0.16), in: .rect(cornerRadius: 18))
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(message.role.rawValue): \(message.text.isEmpty ? "Thinking" : message.text)")
+            .accessibilityLabel("\(message.role.rawValue): \(message.text.isEmpty ? "Generating answer" : message.text)")
 
             if message.role == .assistant {
                 Spacer(minLength: 48)

@@ -27,10 +27,8 @@ actor LocalLLMClient {
             if !result.token.isEmpty {
                 let visibleText = responseFilter.append(result.token)
 
-                if !visibleText.isEmpty {
-                    await MainActor.run {
-                        onTextUpdate(visibleText)
-                    }
+                await MainActor.run {
+                    onTextUpdate(visibleText)
                 }
             }
         }

@@ -10,16 +10,26 @@ struct AssistantResponseFilter {
     }
 
     private func displayText(from text: String) -> String {
-        if let finalRange = text.range(of: "<channel>final") {
+        if let finalRange = text.range(of: "<channel>final") ?? text.range(of: "<|channel|>final") {
             return String(text[finalRange.upperBound...]).trimmedGeneratedAnswer()
         }
 
-        if let closingRange = text.range(of: "</channel>", options: .backwards) {
-            return String(text[closingRange.upperBound...]).trimmedGeneratedAnswer()
+        if let thoughtStartRange = text.range(of: "<channel>thought") ?? text.range(of: "<|channel|>thought") {
+            let remainingText = String(text[thoughtStartRange.upperBound...])
+
+            if let endThoughtRange = remainingText.range(of: "</channel>") ??
+                remainingText.range(of: "<|channel|>") ??
+                remainingText.range(of: "<channel|>") {
+                return String(remainingText[endThoughtRange.upperBound...]).trimmedGeneratedAnswer()
+            }
+
+            return ""
         }
 
-        if text.contains("<channel>thought") {
-            return ""
+        if let closingRange = text.range(of: "</channel>", options: .backwards) ??
+            text.range(of: "<|channel|>", options: .backwards) ??
+            text.range(of: "<channel|>", options: .backwards) {
+            return String(text[closingRange.upperBound...]).trimmedGeneratedAnswer()
         }
 
         if text.isPotentialChannelMarkerPrefix {
@@ -36,6 +46,12 @@ private extension String {
     }
 
     var isPotentialChannelMarkerPrefix: Bool {
-        "<channel>thought".hasPrefix(self) || "<channel>final".hasPrefix(self) || "</channel>".hasPrefix(self)
+        "<channel>thought".hasPrefix(self) ||
+            "<|channel|>thought".hasPrefix(self) ||
+            "<channel>final".hasPrefix(self) ||
+            "<|channel|>final".hasPrefix(self) ||
+            "</channel>".hasPrefix(self) ||
+            "<|channel|>".hasPrefix(self) ||
+            "<channel|>".hasPrefix(self)
     }
 }
