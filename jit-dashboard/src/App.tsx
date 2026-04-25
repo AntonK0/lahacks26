@@ -3,6 +3,13 @@ import './App.css';
 
 const DEFAULT_JIT_MODELS = ['Idle.usdc', 'Wave.usdc', 'Yes.usdc', 'No.usdc'];
 
+const NAV_ITEMS = [
+  { label: 'Home', active: true },
+  { label: 'Packages', active: false },
+  { label: 'Textbooks', active: false },
+  { label: 'Settings', active: false },
+];
+
 type ModelSource = 'default' | 'custom';
 
 function formatFileSize(bytes: number) {
@@ -23,120 +30,120 @@ function App() {
 
   const modelRequirementMet = modelSource === 'default' || modelFiles.length > 0;
   const canPreparePackage = isbn.trim().length > 0 && Boolean(pdfFile) && modelRequirementMet;
+  const completedSteps = Number(Boolean(isbn.trim())) + Number(Boolean(pdfFile)) + Number(modelRequirementMet);
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content" data-theme="jitPublisher">
-      <div className="drawer lg:drawer-open">
-        <input id="publisher-drawer" type="checkbox" className="drawer-toggle" />
+      <main className="mx-auto grid min-h-screen max-w-[1120px] overflow-hidden bg-base-100 min-[900px]:grid-cols-[168px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-base-300 bg-base-100 px-4 py-7 min-[900px]:block">
+          <nav className="space-y-1">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition ${
+                  item.active ? 'bg-base-300/80 text-base-content' : 'text-base-content/70 hover:bg-base-300/50 hover:text-base-content'
+                }`}
+              >
+                <span className={`h-3 w-3 rounded-sm border ${item.active ? 'border-primary bg-primary/15' : 'border-base-content/40'}`} />
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-        <div className="drawer-content flex min-h-screen flex-col">
-          <header className="navbar border-b border-base-300 bg-base-100 px-4 lg:px-8">
-            <div className="flex-none lg:hidden">
-              <label htmlFor="publisher-drawer" className="btn btn-square btn-ghost" aria-label="Open navigation">
-                <span className="text-xl">=</span>
-              </label>
-            </div>
-
-            <div className="flex-1">
-              <div>
-                <p className="text-sm font-medium text-base-content/60">Publisher Console</p>
-                <h1 className="text-xl font-bold tracking-tight">JIT textbook package builder</h1>
-              </div>
-            </div>
-
-            <div className="hidden items-center gap-3 md:flex">
-              <div className="text-right">
-                <p className="text-sm font-semibold">Acme Learning Press</p>
-                <p className="text-xs text-base-content/60">Draft workspace</p>
-              </div>
-              <div className="avatar placeholder">
-                <div className="w-10 rounded-full bg-primary text-primary-content">
-                  <span>AP</span>
+        <section className="mx-auto w-full max-w-[900px] space-y-5 px-5 py-5 sm:px-8 sm:py-7">
+                <div>
+                  <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Home</h1>
+                  <p className="mt-1 text-sm font-semibold text-base-content/55">Create and prepare textbook packages for the JIT iPad app.</p>
                 </div>
-              </div>
-            </div>
-          </header>
 
-          <main className="flex-1 p-4 lg:p-8">
-            <div className="mx-auto flex max-w-6xl flex-col gap-6">
-              <section className="rounded-box border border-base-300 bg-base-100 p-5 shadow-sm">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="badge badge-primary badge-outline mb-3">Edge AR tutor setup</div>
-                    <h2 className="text-3xl font-bold tracking-tight">Create a textbook package</h2>
-                    <p className="mt-2 max-w-2xl text-base-content/70">
-                      Upload textbook content and choose the animation model set the iPad app should load after scanning
-                      the book ISBN.
+                <div className="rounded-[1.35rem] bg-primary p-6 text-primary-content shadow-[0_24px_70px_rgba(0,149,255,0.22)] sm:p-7">
+                  <div className="max-w-2xl">
+                    <p className="mb-2 text-sm font-bold uppercase tracking-[0.18em] opacity-80">Publisher console</p>
+                    <h2 className="text-4xl font-black leading-none tracking-tight sm:text-5xl">Build a Jit package</h2>
+                    <p className="mt-3 max-w-xl text-base leading-tight text-primary-content/85 sm:text-lg">
+                      Upload the textbook, choose the animation set, and prepare the package the iPad app loads after scanning the ISBN.
                     </p>
                   </div>
 
-                  <ul className="steps steps-vertical lg:steps-horizontal">
-                    <li className="step step-primary">ISBN</li>
-                    <li className={`step ${pdfFile ? 'step-primary' : ''}`}>PDF</li>
-                    <li className={`step ${modelRequirementMet ? 'step-primary' : ''}`}>Models</li>
-                  </ul>
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <button type="submit" form="package-form" className="btn border-0 bg-white text-primary hover:bg-white/90" disabled={!canPreparePackage}>
+                      Prepare Package
+                    </button>
+                    <span className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
+                      {completedSteps}/3 steps ready
+                    </span>
+                  </div>
                 </div>
-              </section>
 
-              <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-                <form className="card border border-base-300 bg-base-100 shadow-sm" onSubmit={(event) => event.preventDefault()}>
-                  <div className="card-body gap-6">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="card-title text-2xl">Required submission fields</h3>
-                        <p className="text-sm text-base-content/60">
-                          This is UI-only for now. API upload and processing hooks can be connected later.
-                        </p>
+                <div>
+                  <div className="mb-3 flex items-end justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-black tracking-tight">Package Builder</h2>
+                      <p className="text-sm text-base-content/55">Required fields only. Clean, quick, and ready for backend hooks.</p>
+                    </div>
+                    <span className="hidden rounded-full bg-base-200 px-3 py-1 text-xs font-bold text-base-content/60 sm:inline-flex">
+                      Draft
+                    </span>
+                  </div>
+
+                  <div className="rounded-[1.3rem] bg-base-200/80 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:p-5">
+                    <form
+                      id="package-form"
+                      className="space-y-5"
+                      onSubmit={(event) => event.preventDefault()}
+                    >
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="form-control w-full">
+                          <div className="label">
+                            <span className="label-text text-sm font-black">Textbook ISBN</span>
+                            <span className="label-text-alt text-error">*</span>
+                          </div>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="978-0-13-409341-3"
+                            className="input input-bordered h-12 w-full rounded-xl bg-base-100 text-base"
+                            value={isbn}
+                            onChange={(event) => setIsbn(event.target.value)}
+                          />
+                          <div className="label">
+                            <span className="label-text-alt">Used by the iPad scanner to route to this package.</span>
+                          </div>
+                        </label>
+
+                        <label className="form-control w-full">
+                          <div className="label">
+                            <span className="label-text text-sm font-black">PDF Upload</span>
+                            <span className="label-text-alt text-error">*</span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="file-input file-input-bordered h-12 w-full rounded-xl bg-base-100"
+                            onChange={(event) => setPdfFile(event.target.files?.[0] ?? null)}
+                          />
+                          <div className="label">
+                            <span className="label-text-alt">Source material for chunking and retrieval.</span>
+                          </div>
+                        </label>
                       </div>
-                      <div className="badge badge-neutral">Draft</div>
-                    </div>
 
-                    <div className="grid gap-5 md:grid-cols-2">
-                      <label className="form-control md:col-span-2">
-                        <div className="label">
-                          <span className="label-text font-semibold">Textbook ISBN</span>
-                          <span className="label-text-alt text-error">*</span>
-                        </div>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="978-0-13-409341-3"
-                          className="input input-bordered w-full"
-                          value={isbn}
-                          onChange={(event) => setIsbn(event.target.value)}
-                        />
-                        <div className="label">
-                          <span className="label-text-alt">
-                            Used by the iPad barcode scanner to route to this package.
-                          </span>
-                        </div>
-                      </label>
+                      <div className="h-px bg-base-300" />
 
-                      <label className="form-control md:col-span-2">
-                        <div className="label">
-                          <span className="label-text font-semibold">PDF Upload</span>
-                          <span className="label-text-alt text-error">*</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          className="file-input file-input-bordered w-full"
-                          onChange={(event) => setPdfFile(event.target.files?.[0] ?? null)}
-                        />
-                        <div className="label">
-                          <span className="label-text-alt">
-                            The selected PDF will become the source material for chunking and retrieval.
-                          </span>
-                        </div>
-                      </label>
-                    </div>
+                      <div className="mb-3 flex items-center justify-between">
+                        <h3 className="font-black">3D model source</h3>
+                        <span className="text-xs font-bold text-base-content/55">USDC animation files</span>
+                      </div>
 
-                    <div className="divider my-0">3D model source</div>
-
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <label className="card cursor-pointer border border-base-300 bg-base-200 transition hover:border-primary">
-                        <div className="card-body gap-3">
-                          <div className="flex items-start gap-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label
+                          className={`cursor-pointer rounded-[1.1rem] border p-4 transition ${
+                            modelSource === 'default' ? 'border-primary bg-primary/10' : 'border-base-300 bg-base-100 hover:border-primary/60'
+                          }`}
+                        >
+                          <div className="mb-4 flex items-start gap-3">
                             <input
                               type="radio"
                               name="model-source"
@@ -145,26 +152,31 @@ function App() {
                               onChange={() => setModelSource('default')}
                             />
                             <div>
-                              <h4 className="font-semibold">Use default JIT avatar</h4>
-                              <p className="text-sm text-base-content/70">
-                                Start with the bundled animation files from the local JIT folder.
-                              </p>
+                              <h4 className="font-black">Default JIT avatar</h4>
+                              <p className="text-sm text-base-content/65">Use the bundled local animation set.</p>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            {DEFAULT_JIT_MODELS.map((model) => (
-                              <span key={model} className="badge badge-outline">
+                          <div className="grid grid-cols-2 gap-2">
+                            {DEFAULT_JIT_MODELS.map((model, index) => (
+                              <span
+                                key={model}
+                                className={`rounded-xl px-3 py-2 text-xs font-black ${
+                                  index % 2 === 0 ? 'bg-[#ffd30d] text-[#075694]' : 'bg-[#01a0f4] text-white'
+                                }`}
+                              >
                                 {model}
                               </span>
                             ))}
                           </div>
-                        </div>
-                      </label>
+                        </label>
 
-                      <label className="card cursor-pointer border border-base-300 bg-base-200 transition hover:border-primary">
-                        <div className="card-body gap-3">
-                          <div className="flex items-start gap-3">
+                        <label
+                          className={`cursor-pointer rounded-[1.1rem] border p-4 transition ${
+                            modelSource === 'custom' ? 'border-primary bg-primary/10' : 'border-base-300 bg-base-100 hover:border-primary/60'
+                          }`}
+                        >
+                          <div className="mb-4 flex items-start gap-3">
                             <input
                               type="radio"
                               name="model-source"
@@ -173,10 +185,8 @@ function App() {
                               onChange={() => setModelSource('custom')}
                             />
                             <div>
-                              <h4 className="font-semibold">Upload custom animation set</h4>
-                              <p className="text-sm text-base-content/70">
-                                Choose multiple `.usdc` files when a publisher provides custom model animations.
-                              </p>
+                              <h4 className="font-black">Custom animation set</h4>
+                              <p className="text-sm text-base-content/65">Upload publisher-specific model animations.</p>
                             </div>
                           </div>
 
@@ -184,157 +194,50 @@ function App() {
                             type="file"
                             accept=".usdc"
                             multiple
-                            className="file-input file-input-bordered file-input-primary w-full"
+                            className="file-input file-input-bordered file-input-primary w-full rounded-xl bg-base-100"
                             onChange={(event) => {
                               setModelSource('custom');
                               setModelFiles(Array.from(event.target.files ?? []));
                             }}
                           />
-                        </div>
-                      </label>
-                    </div>
-
-                    {modelSource === 'custom' && (
-                      <div className="rounded-box border border-dashed border-base-300 bg-base-200 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <h4 className="font-semibold">Selected model files</h4>
-                          <span className="badge badge-primary">{modelFiles.length} file(s)</span>
-                        </div>
-
-                        {modelFiles.length > 0 ? (
-                          <ul className="grid gap-2 md:grid-cols-2">
-                            {modelFiles.map((file) => (
-                              <li key={`${file.name}-${file.lastModified}`} className="rounded-box bg-base-100 p-3 text-sm">
-                                <div className="font-medium">{file.name}</div>
-                                <div className="text-base-content/60">{formatFileSize(file.size)}</div>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-sm text-base-content/60">
-                            No custom `.usdc` files selected yet.
-                          </p>
-                        )}
+                        </label>
                       </div>
-                    )}
 
-                    {/* <label className="form-control">
-                      <div className="label">
-                        <span className="label-text font-semibold">Publisher notes</span>
-                        <span className="label-text-alt">Optional</span>
-                      </div>
-                      <textarea
-                        className="textarea textarea-bordered min-h-28"
-                        placeholder="Add chapter ranges, edition notes, or animation mapping details for the ingestion team."
-                      />
-                    </label> */}
-
-                    <div className="card-actions justify-end border-t border-base-300 pt-6">
-                      <button type="button" className="btn btn-ghost">Save draft</button>
-                      <button type="submit" className="btn btn-primary" disabled={!canPreparePackage}>
-                        Prepare package
-                      </button>
-                    </div>
-                  </div>
-                </form>
-
-                <aside className="flex flex-col gap-6">
-                  <div className="card border border-base-300 bg-base-100 shadow-sm">
-                    <div className="card-body">
-                      <h3 className="card-title">Package summary</h3>
-
-                      <div className="stats stats-vertical bg-base-200">
-                        <div className="stat">
-                          <div className="stat-title">ISBN</div>
-                          <div className="stat-value text-lg">{isbn || 'Not set'}</div>
-                        </div>
-                        <div className="stat">
-                          <div className="stat-title">PDF</div>
-                          <div className="stat-value text-lg">{pdfFile ? 'Selected' : 'Missing'}</div>
-                          {pdfFile && <div className="stat-desc">{pdfFile.name}</div>}
-                        </div>
-                        <div className="stat">
-                          <div className="stat-title">Model set</div>
-                          <div className="stat-value text-lg">
-                            {modelSource === 'default' ? 'Default JIT' : `${modelFiles.length} custom`}
+                      {modelSource === 'custom' && (
+                        <div className="mt-4 rounded-[1.1rem] border border-dashed border-base-300 bg-base-100 p-4">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <h4 className="font-black">Selected model files</h4>
+                            <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-content">
+                              {modelFiles.length} file(s)
+                            </span>
                           </div>
-                          <div className="stat-desc">
-                            {modelSource === 'default' ? '4 bundled animations' : 'USDC animation files'}
-                          </div>
+
+                          {modelFiles.length > 0 ? (
+                            <ul className="grid gap-2 md:grid-cols-2">
+                              {modelFiles.map((file) => (
+                                <li key={`${file.name}-${file.lastModified}`} className="rounded-xl bg-base-200 p-3 text-sm">
+                                  <div className="font-bold">{file.name}</div>
+                                  <div className="text-base-content/60">{formatFileSize(file.size)}</div>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-base-content/60">No custom `.usdc` files selected yet.</p>
+                          )}
                         </div>
+                      )}
+
+                      <div className="mt-6 flex justify-end gap-2 border-t border-base-300 pt-5">
+                        <button type="button" className="btn btn-ghost rounded-xl">Save draft</button>
+                        <button type="submit" className="btn btn-primary rounded-xl" disabled={!canPreparePackage}>
+                          Prepare package
+                        </button>
                       </div>
-                    </div>
+                    </form>
                   </div>
-
-                  <div className="alert border border-info/30 bg-info/10 text-info-content">
-                    <div>
-                      <h4 className="font-semibold">Next integration step</h4>
-                      <p className="text-sm">
-                        Later, this form can send PDFs to ingestion and model files to Cloudinary or another asset store.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="card border border-base-300 bg-base-100 shadow-sm">
-                    <div className="card-body">
-                      <h3 className="card-title">Recent packages</h3>
-                      <div className="overflow-x-auto">
-                        <table className="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>Book</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>Biology 101</td>
-                              <td><span className="badge badge-success badge-sm">Ready</span></td>
-                            </tr>
-                            <tr>
-                              <td>Physics Lab</td>
-                              <td><span className="badge badge-warning badge-sm">Draft</span></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </aside>
-              </div>
-            </div>
-          </main>
-        </div>
-
-        <div className="drawer-side z-20">
-          <label htmlFor="publisher-drawer" aria-label="Close navigation" className="drawer-overlay" />
-          <aside className="min-h-full w-64 border-r border-base-300 bg-base-100">
-            <div className="border-b border-base-300 p-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-box bg-primary font-bold text-primary-content">
-                  J
                 </div>
-                <div>
-                  <p className="font-bold">JIT Dashboard</p>
-                  <p className="text-xs text-base-content/60">Publisher tools</p>
-                </div>
-              </div>
-            </div>
-
-            <ul className="menu gap-1 p-4">
-              <li>
-                <a className="active">Dashboard</a>
-              </li>
-              <li>
-                <a>Textbooks</a>
-              </li>
-              <li>
-                <a>Settings</a>
-              </li>
-            </ul>
-          </aside>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }
