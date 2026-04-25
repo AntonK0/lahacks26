@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import './App.css';
 
 const DEFAULT_JIT_MODELS = ['Idle.usdc', 'Wave.usdc', 'Yes.usdc', 'No.usdc'];
@@ -11,6 +11,28 @@ const NAV_ITEMS = [
 ];
 
 type ModelSource = 'default' | 'custom';
+type SubmitStatus = 'idle' | 'uploading-avatar' | 'submitting' | 'success' | 'error';
+
+interface UploadResponse {
+  message?: string;
+  isbn?: string;
+  url?: string;
+  textbook_id?: string;
+  pdf_uploaded?: boolean;
+  pdf_filename?: string | null;
+}
+
+interface CloudinaryUploadResponse {
+  secure_url?: string;
+  error?: {
+    message?: string;
+  };
+}
+
+const uploadApiUrl = import.meta.env.VITE_UPLOAD_API_URL || 'http://127.0.0.1:8000/api/upload';
+const defaultJitCloudinaryUrl = import.meta.env.VITE_DEFAULT_JIT_CLOUDINARY_URL || '';
+const cloudinaryCloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+const cloudinaryUploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
 
 function formatFileSize(bytes: number) {
   if (!bytes) return '0 KB';
@@ -22,15 +44,115 @@ function formatFileSize(bytes: number) {
   return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
 }
 
+function normalizeIsbn(value: string) {
+  return value.replace(/\D/g, '');
+}
+
+async function uploadAvatarToCloudinary(file: File) {
+  if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
+    throw new Error('Cloudinary cloud name and upload preset must be configured before uploading a custom avatar.');
+  }
+
+  const uploadData = new FormData();
+  uploadData.append('file', file);
+  uploadData.append('upload_preset', cloudinaryUploadPreset);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/auto/upload`, {
+    method: 'POST',
+    body: uploadData,
+  });
+  const result = (await response.json()) as CloudinaryUploadResponse;
+
+  if (!response.ok || !result.secure_url) {
+    throw new Error(result.error?.message || 'Cloudinary avatar upload failed.');
+  }
+
+  return result.secure_url;
+}
+
 function App() {
   const [isbn, setIsbn] = useState('');
+  const [textbookId, setTextbookId] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [modelSource, setModelSource] = useState<ModelSource>('default');
-  const [modelFiles, setModelFiles] = useState<File[]>([]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [cloudinaryUrl, setCloudinaryUrl] = useState(defaultJitCloudinaryUrl);
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle');
+  const [submitError, setSubmitError] = useState('');
+  const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(null);
 
-  const modelRequirementMet = modelSource === 'default' || modelFiles.length > 0;
-  const canPreparePackage = isbn.trim().length > 0 && Boolean(pdfFile) && modelRequirementMet;
-  const completedSteps = Number(Boolean(isbn.trim())) + Number(Boolean(pdfFile)) + Number(modelRequirementMet);
+  const normalizedIsbn = normalizeIsbn(isbn);
+  const modelRequirementMet = modelSource === 'default' ? Boolean(defaultJitCloudinaryUrl) : Boolean(avatarFile);
+  const canPreparePackage = normalizedIsbn.length === 13 && Boolean(pdfFile) && modelRequirementMet && submitStatus !== 'uploading-avatar' && submitStatus !== 'submitting';
+  const completedSteps = Number(normalizedIsbn.length === 13) + Number(Boolean(pdfFile)) + Number(modelRequirementMet);
+  const isSubmitting = submitStatus === 'uploading-avatar' || submitStatus === 'submitting';
+
+  async function resolveCloudinaryUrl() {
+    if (modelSource === 'default') {
+      if (!defaultJitCloudinaryUrl) {
+        throw new Error('VITE_DEFAULT_JIT_CLOUDINARY_URL is not configured for the default JIT avatar.');
+      }
+
+      setCloudinaryUrl(defaultJitCloudinaryUrl);
+      return defaultJitCloudinaryUrl;
+    }
+
+    if (!avatarFile) {
+      throw new Error('Choose a custom JIT avatar file before preparing the package.');
+    }
+
+    setSubmitStatus('uploading-avatar');
+    const secureUrl = await uploadAvatarToCloudinary(avatarFile);
+    setCloudinaryUrl(secureUrl);
+    return secureUrl;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitError('');
+    setUploadResponse(null);
+
+    if (normalizedIsbn.length !== 13) {
+      setSubmitStatus('error');
+      setSubmitError('ISBN must contain exactly 13 digits.');
+      return;
+    }
+
+    if (!pdfFile) {
+      setSubmitStatus('error');
+      setSubmitError('Choose a textbook PDF before preparing the package.');
+      return;
+    }
+
+    try {
+      const resolvedCloudinaryUrl = await resolveCloudinaryUrl();
+      const payload = new FormData();
+      payload.append('isbn', normalizedIsbn);
+      payload.append('cloudinary_url', resolvedCloudinaryUrl);
+      payload.append('pdf_file', pdfFile);
+
+      if (textbookId.trim()) {
+        payload.append('textbook_id', textbookId.trim());
+      }
+
+      setSubmitStatus('submitting');
+      const response = await fetch(uploadApiUrl, {
+        method: 'POST',
+        body: payload,
+      });
+      const result = (await response.json().catch(() => null)) as (UploadResponse & { detail?: string }) | null;
+
+      if (!response.ok) {
+        throw new Error(result?.detail || 'FastAPI upload failed.');
+      }
+
+      setUploadResponse(result);
+      setSubmitStatus('success');
+    } catch (error) {
+      setSubmitStatus('error');
+      setSubmitError(error instanceof Error ? error.message : 'Package upload failed.');
+    }
+  }
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content" data-theme="jitPublisher">
@@ -69,7 +191,7 @@ function App() {
 
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <button type="submit" form="package-form" className="btn border-0 bg-white text-primary hover:bg-white/90" disabled={!canPreparePackage}>
-                      Prepare Package
+                      {isSubmitting ? 'Preparing...' : 'Prepare Package'}
                     </button>
                     <span className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
                       {completedSteps}/3 steps ready
@@ -84,7 +206,7 @@ function App() {
                       <p className="text-sm text-base-content/55">Required fields only. Clean, quick, and ready for backend hooks.</p>
                     </div>
                     <span className="hidden rounded-full bg-base-200 px-3 py-1 text-xs font-bold text-base-content/60 sm:inline-flex">
-                      Draft
+                      {submitStatus === 'success' ? 'Saved' : 'Draft'}
                     </span>
                   </div>
 
@@ -92,7 +214,7 @@ function App() {
                     <form
                       id="package-form"
                       className="space-y-5"
-                      onSubmit={(event) => event.preventDefault()}
+                      onSubmit={handleSubmit}
                     >
                       <div className="grid gap-4 sm:grid-cols-2">
                         <label className="form-control w-full">
@@ -109,7 +231,9 @@ function App() {
                             onChange={(event) => setIsbn(event.target.value)}
                           />
                           <div className="label">
-                            <span className="label-text-alt">Used by the iPad scanner to route to this package.</span>
+                            <span className={`label-text-alt ${isbn && normalizedIsbn.length !== 13 ? 'text-error' : ''}`}>
+                              {isbn && normalizedIsbn.length !== 13 ? 'ISBN must resolve to 13 digits.' : 'Used by the iPad scanner to route to this package.'}
+                            </span>
                           </div>
                         </label>
 
@@ -128,13 +252,30 @@ function App() {
                             <span className="label-text-alt">Source material for chunking and retrieval.</span>
                           </div>
                         </label>
+
+                        <label className="form-control w-full sm:col-span-2">
+                          <div className="label">
+                            <span className="label-text text-sm font-black">Textbook ID</span>
+                            <span className="label-text-alt">Optional</span>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="bio_textbook_v1"
+                            className="input input-bordered h-12 w-full rounded-xl bg-base-100 text-base"
+                            value={textbookId}
+                            onChange={(event) => setTextbookId(event.target.value)}
+                          />
+                          <div className="label">
+                            <span className="label-text-alt">Stored with the upload metadata when provided.</span>
+                          </div>
+                        </label>
                       </div>
 
                       <div className="h-px bg-base-300" />
 
                       <div className="mb-3 flex items-center justify-between">
                         <h3 className="font-black">3D model source</h3>
-                        <span className="text-xs font-bold text-base-content/55">USDC animation files</span>
+                        <span className="text-xs font-bold text-base-content/55">Cloudinary secure URL</span>
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -149,25 +290,35 @@ function App() {
                               name="model-source"
                               className="radio radio-primary mt-1"
                               checked={modelSource === 'default'}
-                              onChange={() => setModelSource('default')}
+                              onChange={() => {
+                                setModelSource('default');
+                                setCloudinaryUrl(defaultJitCloudinaryUrl);
+                              }}
                             />
                             <div>
                               <h4 className="font-black">Default JIT avatar</h4>
-                              <p className="text-sm text-base-content/65">Use the bundled local animation set.</p>
+                              <p className="text-sm text-base-content/65">
+                                Use the pre-existing Cloudinary URL from `VITE_DEFAULT_JIT_CLOUDINARY_URL`.
+                              </p>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            {DEFAULT_JIT_MODELS.map((model, index) => (
-                              <span
-                                key={model}
-                                className={`rounded-xl px-3 py-2 text-xs font-black ${
-                                  index % 2 === 0 ? 'bg-[#ffd30d] text-[#075694]' : 'bg-[#01a0f4] text-white'
-                                }`}
-                              >
-                                {model}
-                              </span>
-                            ))}
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              {DEFAULT_JIT_MODELS.map((model, index) => (
+                                <span
+                                  key={model}
+                                  className={`rounded-xl px-3 py-2 text-xs font-black ${
+                                    index % 2 === 0 ? 'bg-[#ffd30d] text-[#075694]' : 'bg-[#01a0f4] text-white'
+                                  }`}
+                                >
+                                  {model}
+                                </span>
+                              ))}
+                            </div>
+                            <p className={`truncate text-xs font-semibold ${defaultJitCloudinaryUrl ? 'text-base-content/55' : 'text-error'}`}>
+                              {defaultJitCloudinaryUrl ? 'Default Cloudinary URL configured.' : 'Missing VITE_DEFAULT_JIT_CLOUDINARY_URL.'}
+                            </p>
                           </div>
                         </label>
 
@@ -182,22 +333,25 @@ function App() {
                               name="model-source"
                               className="radio radio-primary mt-1"
                               checked={modelSource === 'custom'}
-                              onChange={() => setModelSource('custom')}
+                              onChange={() => {
+                                setModelSource('custom');
+                                setCloudinaryUrl('');
+                              }}
                             />
                             <div>
-                              <h4 className="font-black">Custom animation set</h4>
-                              <p className="text-sm text-base-content/65">Upload publisher-specific model animations.</p>
+                              <h4 className="font-black">Custom JIT avatar</h4>
+                              <p className="text-sm text-base-content/65">Upload this file to Cloudinary first, then send its secure URL.</p>
                             </div>
                           </div>
 
                           <input
                             type="file"
-                            accept=".usdc"
-                            multiple
+                            accept=".usdc,.usdz,.glb,.gltf,.zip"
                             className="file-input file-input-bordered file-input-primary w-full rounded-xl bg-base-100"
                             onChange={(event) => {
                               setModelSource('custom');
-                              setModelFiles(Array.from(event.target.files ?? []));
+                              setAvatarFile(event.target.files?.[0] ?? null);
+                              setCloudinaryUrl('');
                             }}
                           />
                         </label>
@@ -206,31 +360,48 @@ function App() {
                       {modelSource === 'custom' && (
                         <div className="mt-4 rounded-[1.1rem] border border-dashed border-base-300 bg-base-100 p-4">
                           <div className="mb-3 flex items-center justify-between gap-3">
-                            <h4 className="font-black">Selected model files</h4>
+                            <h4 className="font-black">Selected avatar file</h4>
                             <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-content">
-                              {modelFiles.length} file(s)
+                              {avatarFile ? '1 file' : '0 files'}
                             </span>
                           </div>
 
-                          {modelFiles.length > 0 ? (
-                            <ul className="grid gap-2 md:grid-cols-2">
-                              {modelFiles.map((file) => (
-                                <li key={`${file.name}-${file.lastModified}`} className="rounded-xl bg-base-200 p-3 text-sm">
-                                  <div className="font-bold">{file.name}</div>
-                                  <div className="text-base-content/60">{formatFileSize(file.size)}</div>
-                                </li>
-                              ))}
-                            </ul>
+                          {avatarFile ? (
+                            <div className="rounded-xl bg-base-200 p-3 text-sm">
+                              <div className="font-bold">{avatarFile.name}</div>
+                              <div className="text-base-content/60">{formatFileSize(avatarFile.size)}</div>
+                            </div>
                           ) : (
-                            <p className="text-sm text-base-content/60">No custom `.usdc` files selected yet.</p>
+                            <p className="text-sm text-base-content/60">No custom JIT avatar file selected yet.</p>
                           )}
                         </div>
                       )}
 
+                      {cloudinaryUrl && (
+                        <div className="rounded-xl bg-base-100 p-3 text-sm">
+                          <p className="font-bold text-base-content/60">Resolved Cloudinary URL</p>
+                          <p className="truncate text-base-content/80">{cloudinaryUrl}</p>
+                        </div>
+                      )}
+
+                      {submitStatus === 'success' && uploadResponse && (
+                        <div className="rounded-xl border border-success/20 bg-success/10 p-3 text-sm text-success-content">
+                          {uploadResponse.message || 'Package metadata saved successfully.'}
+                        </div>
+                      )}
+
+                      {submitStatus === 'error' && submitError && (
+                        <div className="rounded-xl border border-error/20 bg-error/10 p-3 text-sm text-error">
+                          {submitError}
+                        </div>
+                      )}
+
                       <div className="mt-6 flex justify-end gap-2 border-t border-base-300 pt-5">
-                        <button type="button" className="btn btn-ghost rounded-xl">Save draft</button>
+                        <button type="button" className="btn btn-ghost rounded-xl" disabled={isSubmitting}>Save draft</button>
                         <button type="submit" className="btn btn-primary rounded-xl" disabled={!canPreparePackage}>
-                          Prepare package
+                          {submitStatus === 'uploading-avatar' && 'Uploading avatar...'}
+                          {submitStatus === 'submitting' && 'Sending to FastAPI...'}
+                          {!isSubmitting && 'Prepare package'}
                         </button>
                       </div>
                     </form>
