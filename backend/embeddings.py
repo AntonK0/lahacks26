@@ -40,3 +40,19 @@ def embed_query(message: str, settings: Settings | None = None) -> list[float]:
         show_progress_bar=False,
     )[0]
     return truncate_and_normalize(embedding.tolist(), active_settings.embedding_dim)
+
+
+def embed_documents(texts: list[str], settings: Settings | None = None) -> list[list[float]]:
+    active_settings = settings or get_settings()
+    model = get_embedding_model(active_settings.embedding_model)
+    embeddings = model.encode_document(
+        texts,
+        batch_size=min(32, max(1, len(texts))),
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+        show_progress_bar=False,
+    )
+    return [
+        truncate_and_normalize(embedding.tolist(), active_settings.embedding_dim)
+        for embedding in embeddings
+    ]
