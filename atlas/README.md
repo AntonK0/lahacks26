@@ -5,7 +5,7 @@ This folder contains the Atlas-side pieces for the `CLAUDE.md` RAG path. Atlas A
 1. Run `ingestion/ingest.py` locally to upload textbook chunks.
 2. Create the Atlas Vector Search index from `indexes/textbook_chunks_vector_index.json`.
 3. Run or deploy the FastAPI backend in `backend/`.
-4. Point the iOS app at the backend `/retrieve-context` endpoint and send on-device query vectors plus the scanned ISBN.
+4. Point the iOS app at the backend `/retrieve-context` endpoint and send the user's message plus the scanned ISBN.
 
 ## Chunk Document Shape
 
@@ -14,7 +14,6 @@ Each ingested chunk uses this shape:
 ```json
 {
   "_id": "sha256 stable chunk id",
-  "textbook_id": "bio_textbook_v1",
   "isbn": "9780000000000",
   "source_file": "textbook.pdf",
   "page": 12,
@@ -35,7 +34,7 @@ Each ingested chunk uses this shape:
 }
 ```
 
-The app must retrieve by ISBN after barcode routing. `textbook_id` is useful metadata, but ISBN is the required RAG boundary.
+The app must retrieve by ISBN after barcode routing. ISBN is the required RAG boundary.
 
 ## ISBN-Based Logical Separation
 
@@ -61,11 +60,11 @@ Create an Atlas Vector Search index on the collection used by `MONGODB_COLLECTIO
 - Vector path: `embedding`
 - Dimensions: `768`
 - Similarity: `dotProduct`
-- Filter fields: `textbook_id`, `isbn`, `source_file`
+- Filter fields: `isbn`, `source_file`
 
-`dotProduct` assumes embeddings are normalized. The ingestion script normalizes document vectors, and the local query test normalizes query vectors. The iOS EmbeddingGemma path must do the same.
+`dotProduct` assumes embeddings are normalized. The ingestion script normalizes document vectors, and the backend normalizes query vectors generated from request messages.
 
-Large numbers of textbooks can share the vector collection. Atlas Vector Search is built for large indexed corpora, and the ISBN filter excludes unrelated textbooks from the results returned to Gemma. If different editions need stricter separation than ISBN alone, add a canonical edition-aware key such as `textbook_id` and filter by both fields.
+Large numbers of textbooks can share the vector collection. Atlas Vector Search is built for large indexed corpora, and the ISBN filter excludes unrelated textbooks from the results returned to Gemma.
 
 ## Atlas Setup Checklist
 
@@ -83,6 +82,9 @@ The FastAPI backend expects these environment values:
 - `MONGODB_DB`: database name, for example `lahacks`
 - `MONGODB_COLLECTION`: default collection, for example `textbook_chunks`
 - `MONGODB_VECTOR_INDEX`: default vector index, for example `textbook_chunks_vector_index`
+- `EMBEDDING_MODEL`: query embedding model, for example `google/embeddinggemma-300m`
+- `EMBEDDING_DIM`: query embedding dimensions, usually `768`
+- `HF_TOKEN`: Hugging Face read token for the gated EmbeddingGemma model
 - `PORT`: backend port, for example `8000`
 - `ALLOWED_ORIGINS`: CORS origins, for example `*` during local testing
 

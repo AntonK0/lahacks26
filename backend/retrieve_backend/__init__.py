@@ -1,1 +1,0 @@
-"""FastAPI retrieval backend package."""

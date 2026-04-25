@@ -2,7 +2,6 @@
   "bsonType": "object",
   "required": [
     "_id",
-    "textbook_id",
     "isbn",
     "source_file",
     "page",
@@ -15,9 +14,6 @@
   ],
   "properties": {
     "_id": {
-      "bsonType": "string"
-    },
-    "textbook_id": {
       "bsonType": "string"
     },
     "isbn": {

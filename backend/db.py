@@ -5,10 +5,7 @@ from functools import lru_cache
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-try:
-    from retrieve_backend.config import Settings, get_settings
-except ModuleNotFoundError:
-    from config import Settings, get_settings
+from config import Settings, get_settings
 
 
 @lru_cache(maxsize=1)
