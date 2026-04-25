@@ -37,6 +37,8 @@ struct ARViewContainer: UIViewRepresentable {
         )
         arView.addGestureRecognizer(pinch)
 
+        context.coordinator.installAutoPlacedRobot(in: arView)
+
         return arView
     }
 
@@ -79,20 +81,7 @@ struct ARViewContainer: UIViewRepresentable {
 
             if isTapOnPlacedRobot(arView.entity(at: tapLocation)) {
                 playNod()
-                return
             }
-
-            let raycastResults = arView.raycast(
-                from: tapLocation,
-                allowing: .estimatedPlane,
-                alignment: .horizontal
-            )
-
-            guard let firstResult = raycastResults.first else {
-                return
-            }
-
-            placeIdleRobot(at: firstResult.worldTransform, in: arView)
         }
 
         @objc func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
@@ -121,16 +110,25 @@ struct ARViewContainer: UIViewRepresentable {
             }
         }
 
-        private func placeIdleRobot(at worldTransform: simd_float4x4, in arView: ARView) {
+        func installAutoPlacedRobot(in arView: ARView) {
+            guard robotAnchor == nil else {
+                return
+            }
+
             guard let idleRobot = makeRobotEntity(for: .idle) else {
                 return
             }
 
-            robotAnchor?.removeFromParent()
             pendingNodTask?.cancel()
             pendingNodTask = nil
 
-            let anchorEntity = AnchorEntity(world: worldTransform)
+            let anchorEntity = AnchorEntity(
+                .plane(
+                    .horizontal,
+                    classification: .any,
+                    minimumBounds: SIMD2<Float>(0.2, 0.2)
+                )
+            )
             let container = Entity()
             container.name = "PlacedRobotContainer"
             container.scale = [0.01, 0.01, 0.01]
