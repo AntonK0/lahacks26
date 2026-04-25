@@ -10,7 +10,8 @@ actor LocalLLMClient {
 
     func generateResponse(
         for prompt: String,
-        onTextUpdate: @escaping @MainActor @Sendable (String) -> Void
+        onTextUpdate: @escaping @MainActor @Sendable (String) -> Void,
+        onVisibleTextUpdate: (@Sendable (String) async -> Void)? = nil
     ) async throws {
         let model = try loadModel(onDownload: { _ in })
         try model.cleanUp()
@@ -30,6 +31,8 @@ actor LocalLLMClient {
                 await MainActor.run {
                     onTextUpdate(visibleText)
                 }
+
+                await onVisibleTextUpdate?(visibleText)
             }
         }
     }

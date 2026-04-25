@@ -13,6 +13,7 @@ final class LocalChatViewModel {
 
     private let client = LocalLLMClient()
     private var generationTask: Task<Void, Never>?
+    private var ttsClient: ElevenLabsTTSClient?
 
     var canSend: Bool {
         !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isGenerating && !isLoadingModel
@@ -26,7 +27,7 @@ final class LocalChatViewModel {
                 "Preparing local model"
             }
         } else if isGenerating {
-            "Generating on device"
+            MelangeSecrets.isElevenLabsConfigured ? "Generating and speaking" : "Generating on device"
         } else if !MelangeSecrets.isConfigured {
             "Add your Melange key and model name in MelangeSecrets.swift"
         } else {
@@ -82,18 +83,46 @@ final class LocalChatViewModel {
         let assistantMessage = ChatMessage(role: .assistant, text: "")
         messages.append(assistantMessage)
         isGenerating = true
+        let ttsClient = MelangeSecrets.isElevenLabsConfigured ? ElevenLabsTTSClient() : nil
+        self.ttsClient = ttsClient
 
         generationTask = Task {
+            var activeTTSClient = ttsClient
+
+            if let ttsClient {
+                do {
+                    try await ttsClient.start()
+                } catch {
+                    activeTTSClient = nil
+                    self.ttsClient = nil
+                    errorMessage = "ElevenLabs could not start: \(error.localizedDescription)"
+                }
+            }
+
             do {
-                try await client.generateResponse(for: prompt) { [weak self] text in
-                    self?.replaceText(text, in: assistantMessage.id)
+                let streamTTSClient = activeTTSClient
+                try await client.generateResponse(
+                    for: prompt,
+                    onTextUpdate: { [weak self] text in
+                        self?.replaceText(text, in: assistantMessage.id)
+                    },
+                    onVisibleTextUpdate: { text in
+                        await streamTTSClient?.streamVisibleText(text)
+                    }
+                )
+                if Task.isCancelled {
+                    await activeTTSClient?.cancel()
+                } else {
+                    await activeTTSClient?.finish()
                 }
             } catch {
+                await activeTTSClient?.cancel()
                 errorMessage = "Gemma could not generate a response: \(error.localizedDescription)"
                 removeEmptyAssistantMessage(id: assistantMessage.id)
             }
 
             isGenerating = false
+            self.ttsClient = nil
             generationTask = nil
         }
     }
@@ -101,6 +130,11 @@ final class LocalChatViewModel {
     func cancelGeneration() {
         generationTask?.cancel()
         generationTask = nil
+        let ttsClient = ttsClient
+        self.ttsClient = nil
+        Task {
+            await ttsClient?.cancel()
+        }
         isGenerating = false
     }
 
@@ -127,7 +161,7 @@ final class LocalChatViewModel {
     private static func chatPrompt(from messages: [ChatMessage]) -> String {
         var prompt = """
         <start_of_turn>user
-        You are a helpful, concise local tutor running on the user's iOS device. Answer clearly and keep the conversation natural. Return only the final answer. Do not include hidden reasoning, analysis, internal monologue, channel tags, or thinking process.<end_of_turn>
+        You are a helpful, concise local tutor running on the user's iOS device. Answer clearly and keep the conversation natural.<end_of_turn>
 
         """
 
