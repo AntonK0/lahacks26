@@ -4,9 +4,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
-from app.config import get_settings
-from app.db import get_collection
-from app.models import HealthResponse, RetrievalRequest, RetrievalResponse
+import uvicorn
+
+try:
+    from retrieve_backend.config import get_settings
+    from retrieve_backend.db import get_collection
+    from retrieve_backend.models import HealthResponse, RetrievalRequest, RetrievalResponse
+except ModuleNotFoundError:
+    from config import get_settings
+    from db import get_collection
+    from models import HealthResponse, RetrievalRequest, RetrievalResponse
 
 
 settings = get_settings()
@@ -26,6 +33,11 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"message": "LA Hacks retrieval backend is running."}
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok")
@@ -36,14 +48,9 @@ def retrieve_context(request: RetrievalRequest) -> RetrievalResponse:
     isbn = request.isbn.strip()
     if not isbn:
         raise HTTPException(status_code=400, detail="isbn is required for scoped textbook retrieval.")
-
     query_vector = [float(value) for value in request.query_vector]
     if not all(value == value and value not in (float("inf"), float("-inf")) for value in query_vector):
         raise HTTPException(status_code=400, detail="queryVector contains non-finite values.")
-
-    filter_document: dict[str, str] = {"isbn": isbn}
-    if request.textbook_id:
-        filter_document["textbook_id"] = request.textbook_id
 
     num_candidates = request.num_candidates or max(request.limit * 10, 50)
     vector_search = {
@@ -52,7 +59,7 @@ def retrieve_context(request: RetrievalRequest) -> RetrievalResponse:
         "queryVector": query_vector,
         "numCandidates": min(max(num_candidates, request.limit), 200),
         "limit": request.limit,
-        "filter": filter_document,
+        "filter": {"isbn": isbn},
     }
 
     try:
@@ -64,7 +71,6 @@ def retrieve_context(request: RetrievalRequest) -> RetrievalResponse:
                         "$project": {
                             "_id": 0,
                             "text": 1,
-                            "textbook_id": 1,
                             "isbn": 1,
                             "source_file": 1,
                             "page": 1,
@@ -85,3 +91,7 @@ def retrieve_context(request: RetrievalRequest) -> RetrievalResponse:
         count=len(chunks),
         chunks=chunks,
     )
+
+if __name__ == "__main__":
+    module_path = "retrieve_backend.main:app" if __package__ else "main:app"
+    uvicorn.run(module_path, host="0.0.0.0", port=settings.port, reload=True)
