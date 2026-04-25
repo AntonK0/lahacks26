@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+  name: "jitPublisher";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(99% 0.004 255);
+  --color-base-200: oklch(96% 0.008 255);
+  --color-base-300: oklch(90% 0.012 255);
+  --color-base-content: oklch(22% 0.035 255);
+  --color-primary: oklch(29% 0.065 255);
+  --color-primary-content: oklch(98% 0.005 255);
+  --color-secondary: oklch(58% 0.11 250);
+  --color-secondary-content: oklch(98% 0.005 255);
+  --color-accent: oklch(66% 0.16 180);
+  --color-accent-content: oklch(18% 0.035 180);
+  --color-neutral: oklch(36% 0.04 255);
+  --color-neutral-content: oklch(98% 0.005 255);
+  --color-info: oklch(68% 0.14 245);
+  --color-info-content: oklch(20% 0.045 245);
+  --color-success: oklch(65% 0.17 145);
+  --color-success-content: oklch(18% 0.04 145);
+  --color-warning: oklch(78% 0.17 80);
+  --color-warning-content: oklch(22% 0.05 80);
+  --color-error: oklch(62% 0.22 25);
+  --color-error-content: oklch(98% 0.005 25);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
