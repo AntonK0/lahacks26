@@ -10,6 +10,10 @@
 		77DCE0232F9C78D6003EECC6 /* lahacks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lahacks.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXBuildFile section */
+		8F0000012FA0000000000001 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8F0000032FA0000000000001 /* ZIPFoundation */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		77DCE02F2F9C78D7003EECC6 /* Exceptions for "lahacks" folder in "lahacks" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F0000012FA0000000000001 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = lahacks;
 			packageProductDependencies = (
+				8F0000032FA0000000000001 /* ZIPFoundation */,
 			);
 			productName = lahacks;
 			productReference = 77DCE0232F9C78D6003EECC6 /* lahacks.app */;
@@ -110,6 +116,9 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 77DCE0242F9C78D6003EECC6 /* Products */;
 			projectDirPath = "";
+			packageReferences = (
+				8F0000022FA0000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			projectRoot = "";
 			targets = (
 				77DCE0222F9C78D6003EECC6 /* lahacks */,
@@ -145,7 +154,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HDDL2T25P4;
+				DEVELOPMENT_TEAM = M85KKJ9245;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = lahacks/Info.plist;
@@ -162,7 +171,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = lahacks26.lahacks;
+				PRODUCT_BUNDLE_IDENTIFIER = "lahacks-2026.lahacks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -181,7 +190,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = HDDL2T25P4;
+				DEVELOPMENT_TEAM = M85KKJ9245;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = lahacks/Info.plist;
@@ -198,7 +207,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = lahacks26.lahacks;
+				PRODUCT_BUNDLE_IDENTIFIER = "lahacks-2026.lahacks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -351,6 +360,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8F0000022FA0000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8F0000032FA0000000000001 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8F0000022FA0000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 77DCE01B2F9C78D6003EECC6 /* Project object */;
 }

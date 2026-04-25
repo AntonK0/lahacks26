@@ -2,44 +2,116 @@
 //  TutorARView.swift
 //  lahacks
 //
-//  Created by Cursor on 4/25/26.
+//  Owns the post-scan pipeline: takes a freshly scanned ISBN, queries Upstash
+//  Redis for the textbook's avatar config, downloads + extracts the USDZ from
+//  Cloudinary, and renders the AR scene once the assets are ready.
 //
 
-import RealityKit
 import SwiftUI
 
 struct TutorARView: View {
     let isbn: ISBN
     let scanAnotherBook: () -> Void
 
+    @State private var service = TextbookService()
+    @State private var loadState: LoadState = .loading
+    @State private var loadAttempt = 0
+
+    enum LoadState {
+        case loading
+        case loaded(RobotAvatarAssets, atlasCollection: String?)
+        case failed(String)
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
-            RealityView { content in
-                let model = Entity()
-                let mesh = MeshResource.generateBox(size: 0.1, cornerRadius: 0.005)
-                let material = SimpleMaterial(color: .gray, roughness: 0.15, isMetallic: true)
-                model.components.set(ModelComponent(mesh: mesh, materials: [material]))
-                model.position = [0, 0.05, 0]
+            content
 
-                let anchor = AnchorEntity(
-                    .plane(.horizontal, classification: .any, minimumBounds: SIMD2<Float>(0.2, 0.2))
-                )
-                anchor.addChild(model)
-                content.add(anchor)
-                content.camera = .spatialTracking
-            }
-            .ignoresSafeArea()
+            scanAgainBanner
+        }
+        .task(id: loadAttempt) {
+            await load()
+        }
+    }
 
+    @ViewBuilder
+    private var content: some View {
+        switch loadState {
+        case .loading:
+            loadingView
+
+        case .loaded(let assets, _):
+            ARViewContainer(assets: assets)
+                .ignoresSafeArea()
+
+        case .failed(let message):
+            failureView(message: message)
+        }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Loading textbook avatar…")
+                .font(.headline)
+            Text("ISBN \(isbn.value)")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
+
+    private func failureView(message: String) -> some View {
+        ContentUnavailableView {
+            Label("Avatar unavailable", systemImage: "exclamationmark.triangle")
+        } description: {
             VStack(spacing: 8) {
+                Text(message)
                 Text("ISBN \(isbn.value)")
-                    .font(.headline.monospacedDigit())
-
-                Button("Scan Another Book", systemImage: "barcode.viewfinder", action: scanAnotherBook)
-                    .buttonStyle(.borderedProminent)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
-            .padding()
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .padding()
+        } actions: {
+            VStack(spacing: 12) {
+                Button("Retry", systemImage: "arrow.clockwise", action: retry)
+                    .buttonStyle(.borderedProminent)
+
+                if let bundled = RobotAvatarAssets.bundledFallback() {
+                    Button("Use Demo Avatar", systemImage: "cube.transparent") {
+                        loadState = .loaded(bundled, atlasCollection: nil)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var scanAgainBanner: some View {
+        VStack(spacing: 8) {
+            Text("ISBN \(isbn.value)")
+                .font(.headline.monospacedDigit())
+
+            Button("Scan Another Book", systemImage: "barcode.viewfinder", action: scanAnotherBook)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding()
+    }
+
+    private func retry() {
+        loadState = .loading
+        loadAttempt += 1
+    }
+
+    private func load() async {
+        do {
+            let result = try await service.loadTextbook(for: isbn)
+            loadState = .loaded(result.assets, atlasCollection: result.config.atlasCollection)
+        } catch {
+            loadState = .failed(error.localizedDescription)
         }
     }
 }
