@@ -20,6 +20,8 @@ class Settings:
     upload_chunk_words: int
     upload_chunk_overlap: int
     upload_batch_size: int
+    upstash_redis_rest_url: str | None
+    upstash_redis_rest_token: str | None
     port: int
     allowed_origins: list[str]
 
@@ -43,6 +45,8 @@ def get_settings() -> Settings:
         upload_chunk_words=int(os.getenv("UPLOAD_CHUNK_WORDS", "320")),
         upload_chunk_overlap=int(os.getenv("UPLOAD_CHUNK_OVERLAP", "60")),
         upload_batch_size=int(os.getenv("UPLOAD_BATCH_SIZE", "64")),
+        upstash_redis_rest_url=os.getenv("UPSTASH_REDIS_REST_URL"),
+        upstash_redis_rest_token=os.getenv("UPSTASH_REDIS_REST_TOKEN"),
         port=int(os.getenv("PORT", "8000")),
         allowed_origins=_split_csv(os.getenv("ALLOWED_ORIGINS", "*")),
     )

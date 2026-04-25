@@ -6,3 +6,4 @@ pydantic
 sentence-transformers
 pypdf
 python-multipart
+upstash-redis

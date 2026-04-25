@@ -15,6 +15,7 @@ from config import get_settings
 from db import get_collection
 from embeddings import embed_query
 from models import HealthResponse, RetrievalRequest, RetrievalResponse, TextbookUploadResponse
+from redis_store import RedisConfigError, RedisUpdateError, set_textbook_config
 from textbook_ingestion import upload_textbook_chunks
 
 
@@ -90,10 +91,13 @@ def upload_textbook(
             cloudinary_url=validated_cloudinary_url,
             settings=settings,
         )
+        set_textbook_config(scoped_isbn, validated_cloudinary_url, settings)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except PyMongoError as error:
         raise HTTPException(status_code=502, detail=f"MongoDB upload failed: {error}") from error
+    except (RedisConfigError, RedisUpdateError) as error:
+        raise HTTPException(status_code=502, detail=f"Redis update failed: {error}") from error
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"Textbook upload failed: {error}") from error
     finally:
