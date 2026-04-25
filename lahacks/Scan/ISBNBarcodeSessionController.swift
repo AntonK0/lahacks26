@@ -19,6 +19,13 @@ final class ISBNBarcodeSessionController: NSObject {
     private var isConfigured = false
     private var didEmitScanResult = false
 
+    deinit {
+        metadataOutput.setMetadataObjectsDelegate(nil, queue: nil)
+        if captureSession.isRunning {
+            captureSession.stopRunning()
+        }
+    }
+
     func startScanning() async {
         do {
             try await authorizeCameraIfNeeded()
@@ -39,6 +46,7 @@ final class ISBNBarcodeSessionController: NSObject {
     }
 
     func stopScanning() {
+        metadataOutput.setMetadataObjectsDelegate(nil, queue: nil)
         sessionQueue.async { [captureSession] in
             if captureSession.isRunning {
                 captureSession.stopRunning()
@@ -64,6 +72,7 @@ final class ISBNBarcodeSessionController: NSObject {
 
     private func configureSessionIfNeeded() throws {
         guard !isConfigured else {
+            metadataOutput.setMetadataObjectsDelegate(self, queue: metadataQueue)
             return
         }
 
@@ -94,13 +103,12 @@ final class ISBNBarcodeSessionController: NSObject {
         }
         captureSession.addOutput(metadataOutput)
 
-        metadataOutput.setMetadataObjectsDelegate(self, queue: metadataQueue)
-
         guard metadataOutput.availableMetadataObjectTypes.contains(.ean13) else {
             throw ISBNBarcodeScannerError.ean13Unsupported
         }
 
         metadataOutput.metadataObjectTypes = [.ean13]
+        metadataOutput.setMetadataObjectsDelegate(self, queue: metadataQueue)
         isConfigured = true
     }
 

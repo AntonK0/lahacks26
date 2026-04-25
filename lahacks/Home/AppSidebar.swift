@@ -28,6 +28,7 @@ struct AppSidebar: View {
                     .buttonStyle(.plain)
                     .listRowBackground(selectedItem == item ? HomeDesign.accentBlue.opacity(0.14) : Color.clear)
                 }
+                .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
                 .padding(.top, 24)
 
@@ -40,7 +41,6 @@ struct AppSidebar: View {
                 .padding(.bottom, 24)
             }
         }
-        .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(
             min: 260,
             ideal: HomeDesign.sidebarWidth,
