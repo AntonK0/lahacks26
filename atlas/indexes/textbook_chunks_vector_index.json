@@ -8,10 +8,6 @@
     },
     {
       "type": "filter",
-      "path": "textbook_id"
-    },
-    {
-      "type": "filter",
       "path": "isbn"
     },
     {

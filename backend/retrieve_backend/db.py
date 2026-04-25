@@ -5,14 +5,16 @@ from functools import lru_cache
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from app.config import Settings, get_settings
+try:
+    from retrieve_backend.config import Settings, get_settings
+except ModuleNotFoundError:
+    from config import Settings, get_settings
 
 
 @lru_cache(maxsize=1)
 def get_client() -> MongoClient:
     settings = get_settings()
-    # Same core pattern as MongoDB's Python starter: create one MongoClient
-    # from the Atlas connection string and reuse it across requests.
+    # Create one Atlas client from the connection string and reuse it.
     return MongoClient(settings.mongodb_uri)
 
 
