@@ -6,13 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXFileReference section */
-		77DCE0232F9C78D6003EECC6 /* lahacks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lahacks.app; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
-
 /* Begin PBXBuildFile section */
 		8F0000012FA0000000000001 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8F0000032FA0000000000001 /* ZIPFoundation */; };
+		D3C566512F9CB260003D5112 /* ZeticMLange in Frameworks */ = {isa = PBXBuildFile; productRef = D3C566502F9CB260003D5112 /* ZeticMLange */; };
+		D3C566522F9CB260003D5112 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D3C566532F9CB260003D5112 /* Accelerate.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		77DCE0232F9C78D6003EECC6 /* lahacks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lahacks.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3C566532F9CB260003D5112 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		77DCE02F2F9C78D7003EECC6 /* Exceptions for "lahacks" folder in "lahacks" target */ = {
@@ -41,6 +44,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F0000012FA0000000000001 /* ZIPFoundation in Frameworks */,
+				D3C566522F9CB260003D5112 /* Accelerate.framework in Frameworks */,
+				D3C566512F9CB260003D5112 /* ZeticMLange in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -52,6 +57,7 @@
 			children = (
 				77DCE0252F9C78D6003EECC6 /* lahacks */,
 				77DCE0242F9C78D6003EECC6 /* Products */,
+				D3C566542F9CB260003D5112 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -61,6 +67,14 @@
 				77DCE0232F9C78D6003EECC6 /* lahacks.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D3C566542F9CB260003D5112 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D3C566532F9CB260003D5112 /* Accelerate.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -84,6 +98,7 @@
 			name = lahacks;
 			packageProductDependencies = (
 				8F0000032FA0000000000001 /* ZIPFoundation */,
+				D3C566502F9CB260003D5112 /* ZeticMLange */,
 			);
 			productName = lahacks;
 			productReference = 77DCE0232F9C78D6003EECC6 /* lahacks.app */;
@@ -113,12 +128,13 @@
 			);
 			mainGroup = 77DCE01A2F9C78D6003EECC6;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8F0000022FA0000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				D3C5664F2F9CB260003D5112 /* XCRemoteSwiftPackageReference "ZeticMLangeiOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 77DCE0242F9C78D6003EECC6 /* Products */;
 			projectDirPath = "";
-			packageReferences = (
-				8F0000022FA0000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
-			);
 			projectRoot = "";
 			targets = (
 				77DCE0222F9C78D6003EECC6 /* lahacks */,
@@ -370,6 +386,14 @@
 				minimumVersion = 0.9.19;
 			};
 		};
+		D3C5664F2F9CB260003D5112 /* XCRemoteSwiftPackageReference "ZeticMLangeiOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/zetic-ai/ZeticMLangeiOS.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -377,6 +401,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8F0000022FA0000000000001 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
+		};
+		D3C566502F9CB260003D5112 /* ZeticMLange */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D3C5664F2F9CB260003D5112 /* XCRemoteSwiftPackageReference "ZeticMLangeiOS" */;
+			productName = ZeticMLange;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
