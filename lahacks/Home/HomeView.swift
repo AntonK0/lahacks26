@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @State private var selectedItem = SidebarItem.home
     @State private var scannedISBN: ISBN?
+    @State private var scanSessionID = UUID()
     @State private var conversation = TutorConversationModel()
 
     var body: some View {
@@ -44,6 +45,7 @@ struct HomeView: View {
             )
         } else {
             ISBNBarcodeScannerView(onISBNScanned: handleScannedISBN)
+                .id(scanSessionID)
         }
     }
 
@@ -52,7 +54,9 @@ struct HomeView: View {
     }
 
     private func scanAnotherBook() {
+        conversation.stopInteraction()
         scannedISBN = nil
+        scanSessionID = UUID()
     }
 }
 

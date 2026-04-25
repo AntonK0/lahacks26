@@ -150,6 +150,7 @@ final class TutorConversationModel {
         logger.info("Preparing on-device tutor model")
 
         modelLoadTask = Task { [weak self, llmClient] in
+            defer { self?.modelLoadTask = nil }
             do {
                 try await llmClient.prepare { [weak self] progress in
                     guard let self else { return }
@@ -168,7 +169,6 @@ final class TutorConversationModel {
                 }
                 self.state = .unavailable
             }
-            self?.modelLoadTask = nil
         }
     }
 

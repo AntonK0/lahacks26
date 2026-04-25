@@ -50,6 +50,13 @@ struct ARViewContainer: UIViewRepresentable {
         context.coordinator.applySpeakingState(isSpeaking)
     }
 
+    static func dismantleUIView(_ uiView: ARView, coordinator: Coordinator) {
+        coordinator.tearDown()
+        uiView.gestureRecognizers?.forEach(uiView.removeGestureRecognizer)
+        uiView.scene.anchors.removeAll()
+        uiView.session.pause()
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator(assets: assets)
     }
@@ -80,6 +87,22 @@ struct ARViewContainer: UIViewRepresentable {
 
         deinit {
             spawnTransitionTask?.cancel()
+        }
+
+        func tearDown() {
+            spawnTransitionTask?.cancel()
+            spawnTransitionTask = nil
+            animationController?.stop()
+            animationController = nil
+            displayedRobot?.removeFromParent()
+            displayedRobot = nil
+            robotContainer?.removeFromParent()
+            robotContainer = nil
+            robotAnchor?.removeFromParent()
+            robotAnchor = nil
+            hasFinishedSpawnSequence = false
+            lastAppliedSpeaking = false
+            currentLoopMode = .idle
         }
 
         @objc func handlePinch(_ recognizer: UIPinchGestureRecognizer) {

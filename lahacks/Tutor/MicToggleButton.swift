@@ -94,7 +94,9 @@ struct MicToggleButton: View {
         case .listening: "Stop listening and send"
         case .thinking: "Cancel tutor response"
         case .speaking: "Stop tutor speaking"
-        default: "Talk to the tutor"
+        case .loadingModel: "Loading tutor model"
+        case .unavailable: "Tutor unavailable"
+        case .idle: "Talk to the tutor"
         }
     }
 
@@ -104,7 +106,8 @@ struct MicToggleButton: View {
         case .listening: "Stops listening and sends your question to the tutor."
         case .thinking: "Cancels the on-device language model and returns to idle."
         case .speaking: "Stops the tutor mid-sentence and returns to idle."
-        default: "Wait for the tutor to be ready."
+        case .loadingModel: "Wait for the on-device model to finish loading."
+        case .unavailable: "Check Melange and ElevenLabs configuration."
         }
     }
 }
