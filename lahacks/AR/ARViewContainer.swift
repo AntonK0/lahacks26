@@ -7,6 +7,14 @@
 //  `RobotAvatarAssets` bundle, which can either be the freshly downloaded
 //  Cloudinary archive or the in-bundle fallback.
 //
+//  Animation behaviour:
+//      • On spawn, plays the `Wave` clip once before transitioning to a looping
+//        `Idle`. (If `Wave` isn't bundled, falls back to `Idle` immediately.)
+//      • While `isSpeaking` is true, swaps to a looping `Yes` clip so the
+//        avatar appears to be talking; restores the looping `Idle` when it
+//        becomes false again.
+//      • Pinch gesture continues to scale the avatar.
+//
 
 import ARKit
 import RealityKit
@@ -14,6 +22,7 @@ import SwiftUI
 
 struct ARViewContainer: UIViewRepresentable {
     let assets: RobotAvatarAssets
+    let isSpeaking: Bool
 
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
@@ -24,12 +33,6 @@ struct ARViewContainer: UIViewRepresentable {
             configuration.sceneReconstruction = .mesh
         }
         arView.session.run(configuration)
-
-        let tap = UITapGestureRecognizer(
-            target: context.coordinator,
-            action: #selector(Coordinator.handleTap(_:))
-        )
-        arView.addGestureRecognizer(tap)
 
         let pinch = UIPinchGestureRecognizer(
             target: context.coordinator,
@@ -44,6 +47,7 @@ struct ARViewContainer: UIViewRepresentable {
 
     func updateUIView(_ uiView: ARView, context: Context) {
         context.coordinator.assets = assets
+        context.coordinator.applySpeakingState(isSpeaking)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -54,11 +58,17 @@ struct ARViewContainer: UIViewRepresentable {
     final class Coordinator {
         var assets: RobotAvatarAssets
 
+        private enum LoopMode { case idle, speaking }
+
         private var robotAnchor: AnchorEntity?
         private var robotContainer: Entity?
         private var displayedRobot: Entity?
         private var animationController: AnimationPlaybackController?
-        private var pendingNodTask: Task<Void, Never>?
+        private var spawnTransitionTask: Task<Void, Never>?
+
+        private var lastAppliedSpeaking = false
+        private var currentLoopMode: LoopMode = .idle
+        private var hasFinishedSpawnSequence = false
 
         private var initialScale: SIMD3<Float> = [0.01, 0.01, 0.01]
         private let minScale: Float = 0.01
@@ -69,19 +79,7 @@ struct ARViewContainer: UIViewRepresentable {
         }
 
         deinit {
-            pendingNodTask?.cancel()
-        }
-
-        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
-            guard let arView = recognizer.view as? ARView else {
-                return
-            }
-
-            let tapLocation = recognizer.location(in: arView)
-
-            if isTapOnPlacedRobot(arView.entity(at: tapLocation)) {
-                playNod()
-            }
+            spawnTransitionTask?.cancel()
         }
 
         @objc func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
@@ -115,12 +113,13 @@ struct ARViewContainer: UIViewRepresentable {
                 return
             }
 
-            guard let idleRobot = makeRobotEntity(for: .idle) else {
+            let initialAnimation: RobotAvatarAssets.Animation = assets.url(for: .wave) != nil ? .wave : .idle
+            guard let initialRobot = makeRobotEntity(for: initialAnimation) else {
                 return
             }
 
-            pendingNodTask?.cancel()
-            pendingNodTask = nil
+            spawnTransitionTask?.cancel()
+            spawnTransitionTask = nil
 
             let anchorEntity = AnchorEntity(
                 .plane(
@@ -132,48 +131,68 @@ struct ARViewContainer: UIViewRepresentable {
             let container = Entity()
             container.name = "PlacedRobotContainer"
             container.scale = [0.01, 0.01, 0.01]
-            container.addChild(idleRobot)
+            container.addChild(initialRobot)
 
             anchorEntity.addChild(container)
             arView.scene.addAnchor(anchorEntity)
 
             robotAnchor = anchorEntity
             robotContainer = container
-            displayedRobot = idleRobot
-            playFirstAnimation(on: idleRobot, looping: true)
+            displayedRobot = initialRobot
+
+            if initialAnimation == .wave {
+                playFirstAnimation(on: initialRobot, looping: false)
+                scheduleSpawnTransitionToIdle(after: animationController?.duration ?? 2.0)
+            } else {
+                playFirstAnimation(on: initialRobot, looping: true)
+                hasFinishedSpawnSequence = true
+                currentLoopMode = .idle
+            }
         }
 
-        private func playNod() {
-            guard robotContainer != nil, pendingNodTask == nil else {
+        func applySpeakingState(_ speaking: Bool) {
+            guard lastAppliedSpeaking != speaking else { return }
+            lastAppliedSpeaking = speaking
+
+            if speaking {
+                spawnTransitionTask?.cancel()
+                spawnTransitionTask = nil
+                hasFinishedSpawnSequence = true
+                switchLoop(to: .speaking)
+            } else {
+                if !hasFinishedSpawnSequence {
+                    return
+                }
+                switchLoop(to: .idle)
+            }
+        }
+
+        private func scheduleSpawnTransitionToIdle(after seconds: TimeInterval) {
+            let duration = max(seconds, 0.1)
+            spawnTransitionTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(duration))
+                guard let self, !Task.isCancelled else { return }
+                self.spawnTransitionTask = nil
+                self.hasFinishedSpawnSequence = true
+                if self.lastAppliedSpeaking {
+                    self.switchLoop(to: .speaking)
+                } else {
+                    self.switchLoop(to: .idle)
+                }
+            }
+        }
+
+        private func switchLoop(to mode: LoopMode) {
+            guard robotContainer != nil else { return }
+
+            let animation: RobotAvatarAssets.Animation = mode == .speaking ? .yes : .idle
+            guard let entity = makeRobotEntity(for: animation) else {
                 return
             }
 
-            guard let nodRobot = makeRobotEntity(for: .yes) else {
-                return
-            }
-
-            swapDisplayedRobot(to: nodRobot)
-            playFirstAnimation(on: nodRobot, looping: false)
-
-            let nodDuration = max(animationController?.duration ?? 1.5, 0.1)
-
-            pendingNodTask = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(nodDuration))
-                guard let self else {
-                    return
-                }
-                self.pendingNodTask = nil
-
-                guard !Task.isCancelled else {
-                    return
-                }
-
-                guard let idleRobot = self.makeRobotEntity(for: .idle) else {
-                    return
-                }
-                self.swapDisplayedRobot(to: idleRobot)
-                self.playFirstAnimation(on: idleRobot, looping: true)
-            }
+            swapDisplayedRobot(to: entity)
+            playFirstAnimation(on: entity, looping: true)
+            currentLoopMode = mode
         }
 
         private func makeRobotEntity(for animation: RobotAvatarAssets.Animation) -> Entity? {
@@ -209,21 +228,6 @@ struct ARViewContainer: UIViewRepresentable {
                 transitionDuration: 0.2,
                 startsPaused: false
             )
-        }
-
-        private func isTapOnPlacedRobot(_ entity: Entity?) -> Bool {
-            guard let robotContainer, var current = entity else {
-                return false
-            }
-            while true {
-                if current == robotContainer {
-                    return true
-                }
-                guard let parent = current.parent else {
-                    return false
-                }
-                current = parent
-            }
         }
     }
 }

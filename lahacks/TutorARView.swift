@@ -6,11 +6,17 @@
 //  Redis for the textbook's avatar config, downloads + extracts the USDZ from
 //  Cloudinary, and renders the AR scene once the assets are ready.
 //
+//  Once the avatar is on screen, also hosts the voice tutor conversation
+//  (mic toggle → SpeechAnalyzer → Gemma → ElevenLabs) and forwards the
+//  resulting `isSpeaking` flag to the AR view so the avatar loops the Yes
+//  animation while it talks back.
+//
 
 import SwiftUI
 
 struct TutorARView: View {
     let isbn: ISBN
+    let conversation: TutorConversationModel
     let scanAnotherBook: () -> Void
 
     @State private var service = TextbookService()
@@ -32,6 +38,9 @@ struct TutorARView: View {
         .task(id: loadAttempt) {
             await load()
         }
+        .onDisappear {
+            conversation.stopInteraction()
+        }
     }
 
     @ViewBuilder
@@ -41,8 +50,15 @@ struct TutorARView: View {
             loadingView
 
         case .loaded(let assets, _):
-            ARViewContainer(assets: assets)
-                .ignoresSafeArea()
+            ZStack(alignment: .bottom) {
+                ARViewContainer(assets: assets, isSpeaking: conversation.isSpeaking)
+                    .ignoresSafeArea()
+
+                TutorConversationOverlay(conversation: conversation)
+            }
+            .task {
+                conversation.prepareModel()
+            }
 
         case .failed(let message):
             failureView(message: message)
@@ -117,5 +133,9 @@ struct TutorARView: View {
 }
 
 #Preview {
-    TutorARView(isbn: ISBN(barcodePayload: "9780306406157")!, scanAnotherBook: {})
+    TutorARView(
+        isbn: ISBN(barcodePayload: "9780306406157")!,
+        conversation: TutorConversationModel(),
+        scanAnotherBook: {}
+    )
 }

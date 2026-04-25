@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppSidebar: View {
     @Binding var selectedItem: SidebarItem
+    let conversation: TutorConversationModel
 
     var body: some View {
         ZStack {
@@ -12,22 +13,32 @@ struct AppSidebar: View {
                 )
                 .ignoresSafeArea()
 
-            List(SidebarItem.allCases) { item in
-                Button {
-                    selectedItem = item
-                } label: {
-                    Label(item.title, systemImage: item.systemImage)
-                        .symbolVariant(selectedItem == item ? .fill : .none)
-                        .foregroundStyle(selectedItem == item ? HomeDesign.accentBlue : HomeDesign.primaryLabel)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .contentShape(.rect)
-                        .accessibilityAddTraits(selectedItem == item ? .isSelected : [])
+            VStack(spacing: 0) {
+                List(SidebarItem.allCases) { item in
+                    Button {
+                        selectedItem = item
+                    } label: {
+                        Label(item.title, systemImage: item.systemImage)
+                            .symbolVariant(selectedItem == item ? .fill : .none)
+                            .foregroundStyle(selectedItem == item ? HomeDesign.accentBlue : HomeDesign.primaryLabel)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(.rect)
+                            .accessibilityAddTraits(selectedItem == item ? .isSelected : [])
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(selectedItem == item ? HomeDesign.accentBlue.opacity(0.14) : Color.clear)
                 }
-                .buttonStyle(.plain)
-                .listRowBackground(selectedItem == item ? HomeDesign.accentBlue.opacity(0.14) : Color.clear)
+                .scrollContentBackground(.hidden)
+                .padding(.top, 24)
+
+                GemmaReadinessIndicator(
+                    isReady: conversation.isGemmaReady,
+                    title: conversation.gemmaReadinessLabel,
+                    detail: conversation.gemmaReadinessDetail
+                )
+                .padding(.horizontal, 18)
+                .padding(.bottom, 24)
             }
-            .scrollContentBackground(.hidden)
-            .padding(.top, 24)
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(
@@ -39,8 +50,10 @@ struct AppSidebar: View {
 }
 
 #Preview {
+    let conversation = TutorConversationModel()
+
     NavigationSplitView {
-        AppSidebar(selectedItem: .constant(.home))
+        AppSidebar(selectedItem: .constant(.home), conversation: conversation)
     } detail: {
         Text("Detail")
     }

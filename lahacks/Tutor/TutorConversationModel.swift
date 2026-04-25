@@ -1,0 +1,394 @@
+//
+//  TutorConversationModel.swift
+//  lahacks
+//
+//  Coordinates the voice-first tutor experience:
+//
+//      mic on → SpeechAnalyzer → mic off → Gemma (LocalLLMClient) → ElevenLabs TTS
+//
+//  The Gemma + ElevenLabs portion mirrors the original LocalChatViewModel from the
+//  `gemma-elevenlabs-audioOutput` branch (chat history, prompt template, streaming
+//  partial text, final speak). The new pieces are:
+//
+//      • mic toggle entry point that drains the SpeechAnalyzer transcript on stop
+//      • a `state` machine that drives the AR avatar (wave on spawn, Yes loop while
+//        speaking, Idle otherwise) via `isSpeaking`
+//      • explicit ordering between the recording AVAudioSession and the playback
+//        AVAudioSession so the mic is fully torn down before TTS opens its session
+//      • progress signals (elapsed time + raw-token callback count) so the UI can
+//        prove the model is still working even while the response filter is
+//        suppressing thinking tokens
+//      • an `<end_of_turn>` early-stop fallback in case Zetic doesn't recognize
+//        Gemma's EOS and the inner generation loop would otherwise run forever
+//      • a user-initiated cancel that aborts the pipeline mid-flight
+//
+//  This model is `@MainActor` so all UI-facing state mutations land on main; the
+//  Gemma actor handles its own off-main token loop and posts streamed text back to
+//  the main actor.
+//
+
+import Foundation
+import Observation
+import OSLog
+
+@MainActor
+@Observable
+final class TutorConversationModel {
+    enum State: Equatable {
+        case idle
+        case loadingModel(progress: Float?)
+        case listening
+        case thinking
+        case speaking
+        case unavailable
+    }
+
+    private(set) var state: State = .idle
+    private(set) var messages: [ChatMessage] = []
+    private(set) var partialAssistantText = ""
+    private(set) var thinkingStartedAt: Date?
+    private(set) var rawTokenCount = 0
+    private(set) var errorMessage: String?
+    private(set) var isGemmaReady = false
+
+    let speechModel = SpeechAnalyzerModel()
+
+    private let logger = Logger(subsystem: "lahacks", category: "TutorConversationModel")
+    private let llmClient = LocalLLMClient()
+    private var ttsClient: ElevenLabsTTSClient?
+    private var modelLoadTask: Task<Void, Never>?
+    private var pipelineTask: Task<Void, Never>?
+    private var earlyStoppedText: String?
+
+    var isSpeaking: Bool { state == .speaking }
+
+    var isModelReady: Bool {
+        switch state {
+        case .idle, .listening, .thinking, .speaking:
+            return isGemmaReady
+        case .loadingModel, .unavailable:
+            return false
+        }
+    }
+
+    var canToggleMic: Bool {
+        guard isGemmaReady else { return false }
+
+        switch state {
+        case .idle, .listening:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var canCancelPipeline: Bool {
+        switch state {
+        case .thinking, .speaking:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var gemmaReadinessLabel: String {
+        isGemmaReady ? "Gemma Ready" : "Gemma Not Ready"
+    }
+
+    var gemmaReadinessDetail: String {
+        switch state {
+        case .loadingModel(let progress):
+            if let progress {
+                "Loading \(progress.formatted(.percent.precision(.fractionLength(0))))"
+            } else {
+                "Loading model"
+            }
+        case .unavailable:
+            "Check configuration"
+        default:
+            isGemmaReady ? "Loaded on device" : "Preloading"
+        }
+    }
+
+    var statusMessage: String {
+        switch state {
+        case .idle:
+            "Tap the mic and ask a question."
+        case .loadingModel(let progress):
+            if let progress {
+                "Downloading tutor model \(progress.formatted(.percent.precision(.fractionLength(0))))"
+            } else {
+                "Loading on-device tutor…"
+            }
+        case .listening:
+            "Listening — tap the mic to send."
+        case .thinking:
+            "Thinking on-device…"
+        case .speaking:
+            "Speaking…"
+        case .unavailable:
+            "Tutor unavailable. Check Melange configuration."
+        }
+    }
+
+    var liveTranscript: String {
+        speechModel.transcript
+    }
+
+    func prepareModel() {
+        guard MelangeSecrets.isConfigured else {
+            isGemmaReady = false
+            state = .unavailable
+            errorMessage = "Add your Melange personal key and model name in MelangeSecrets.swift before talking to the tutor."
+            return
+        }
+
+        if case .loadingModel = state { return }
+        if isGemmaReady { return }
+
+        state = .loadingModel(progress: nil)
+        logger.info("Preparing on-device tutor model")
+
+        modelLoadTask = Task { [weak self, llmClient] in
+            do {
+                try await llmClient.prepare { [weak self] progress in
+                    guard let self else { return }
+                    self.state = .loadingModel(progress: progress)
+                }
+                guard let self, !Task.isCancelled else { return }
+                self.isGemmaReady = true
+                self.state = .idle
+                self.logger.info("Tutor model ready")
+            } catch {
+                guard let self else { return }
+                self.isGemmaReady = false
+                if !Task.isCancelled {
+                    self.errorMessage = "Could not load the tutor model: \(error.localizedDescription)"
+                    self.logger.error("Model prepare failed: \(error.localizedDescription, privacy: .public)")
+                }
+                self.state = .unavailable
+            }
+            self?.modelLoadTask = nil
+        }
+    }
+
+    func toggleMic() {
+        switch state {
+        case .listening:
+            stopAndProcess()
+        case .idle:
+            startListening()
+        default:
+            return
+        }
+    }
+
+    func cancelPipeline() {
+        guard pipelineTask != nil else { return }
+        logger.info("User cancelled pipeline (state=\(String(describing: self.state), privacy: .public))")
+        pipelineTask?.cancel()
+        let client = ttsClient
+        ttsClient = nil
+        Task { await client?.cancel() }
+    }
+
+    func tearDown() {
+        modelLoadTask?.cancel()
+        modelLoadTask = nil
+        stopInteraction()
+    }
+
+    func stopInteraction() {
+        pipelineTask?.cancel()
+        pipelineTask = nil
+        speechModel.stopListening()
+        let client = ttsClient
+        ttsClient = nil
+        Task { await client?.cancel() }
+        if isGemmaReady {
+            state = .idle
+        }
+    }
+
+    func dismissError() {
+        errorMessage = nil
+    }
+
+    private func startListening() {
+        guard isGemmaReady else {
+            errorMessage = "Gemma is still loading. Wait for the Ready indicator before talking."
+            return
+        }
+        errorMessage = nil
+        speechModel.startListening()
+        state = .listening
+        logger.info("Mic on — listening")
+    }
+
+    private func stopAndProcess() {
+        let userText = speechModel.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        speechModel.stopListening()
+        logger.info("Mic off — captured \(userText.count) chars")
+
+        guard !userText.isEmpty else {
+            state = .idle
+            errorMessage = "I didn't catch that — try again."
+            return
+        }
+
+        messages.append(ChatMessage(role: .user, text: userText))
+        runPipeline()
+    }
+
+    private func runPipeline() {
+        partialAssistantText = ""
+        rawTokenCount = 0
+        thinkingStartedAt = .now
+        earlyStoppedText = nil
+
+        let prompt = Self.chatPrompt(from: messages)
+        let assistantMessage = ChatMessage(role: .assistant, text: "")
+        messages.append(assistantMessage)
+        let assistantID = assistantMessage.id
+
+        state = .thinking
+        logger.info("Pipeline started (prompt=\(prompt.count, privacy: .public) chars)")
+
+        pipelineTask = Task { [weak self, llmClient] in
+            guard let self else { return }
+
+            let finalResponse: String
+            do {
+                finalResponse = try await llmClient.generateResponse(for: prompt) { [weak self] streamed in
+                    guard let self else { return }
+                    self.handleStreamed(streamed, assistantID: assistantID)
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.errorMessage = "Tutor failed to respond: \(error.localizedDescription)"
+                    self.logger.error("LLM error: \(error.localizedDescription, privacy: .public)")
+                }
+                self.removeEmptyAssistantMessage(id: assistantID)
+                self.state = .idle
+                self.thinkingStartedAt = nil
+                self.pipelineTask = nil
+                return
+            }
+
+            let cancelled = Task.isCancelled
+            let textToSpeak: String
+            if let early = self.earlyStoppedText {
+                textToSpeak = early
+                self.logger.info("Pipeline early-stopped on <end_of_turn> (chars=\(early.count))")
+            } else if cancelled {
+                self.logger.info("Pipeline cancelled by user")
+                self.removeEmptyAssistantMessage(id: assistantID)
+                self.state = .idle
+                self.thinkingStartedAt = nil
+                self.pipelineTask = nil
+                return
+            } else {
+                textToSpeak = finalResponse
+                    .replacingOccurrences(of: "<end_of_turn>", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                self.logger.info("Pipeline finished normally (raw chars=\(finalResponse.count), spoken chars=\(textToSpeak.count))")
+            }
+
+            self.thinkingStartedAt = nil
+
+            if textToSpeak.isEmpty {
+                self.removeEmptyAssistantMessage(id: assistantID)
+                self.state = .idle
+                self.pipelineTask = nil
+                return
+            }
+
+            self.replaceText(textToSpeak, in: assistantID)
+            self.partialAssistantText = textToSpeak
+            await self.speak(textToSpeak)
+            self.pipelineTask = nil
+        }
+    }
+
+    private func handleStreamed(_ streamed: String, assistantID: ChatMessage.ID) {
+        rawTokenCount += 1
+
+        if earlyStoppedText != nil {
+            return
+        }
+
+        if let endRange = streamed.range(of: "<end_of_turn>") {
+            let truncated = String(streamed[..<endRange.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            earlyStoppedText = truncated
+            partialAssistantText = truncated
+            replaceText(truncated, in: assistantID)
+            pipelineTask?.cancel()
+            return
+        }
+
+        partialAssistantText = streamed
+        replaceText(streamed, in: assistantID)
+    }
+
+    private func speak(_ text: String) async {
+        guard MelangeSecrets.isElevenLabsConfigured else {
+            state = .idle
+            return
+        }
+
+        let client = ElevenLabsTTSClient()
+        ttsClient = client
+        state = .speaking
+        logger.info("Speaking via ElevenLabs (\(text.count) chars)")
+
+        do {
+            try await client.start()
+            try await client.speak(text)
+        } catch {
+            if !Task.isCancelled {
+                errorMessage = "Voice playback failed: \(error.localizedDescription)"
+                logger.error("ElevenLabs failed: \(error.localizedDescription, privacy: .public)")
+            }
+            await client.cancel()
+        }
+
+        ttsClient = nil
+        state = .idle
+    }
+
+    private func replaceText(_ text: String, in messageID: ChatMessage.ID) {
+        guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return }
+        messages[index].text = text
+    }
+
+    private func removeEmptyAssistantMessage(id: ChatMessage.ID) {
+        guard let index = messages.firstIndex(where: { $0.id == id }), messages[index].text.isEmpty else { return }
+        messages.remove(at: index)
+    }
+
+    private static func chatPrompt(from messages: [ChatMessage]) -> String {
+        var prompt = """
+        <start_of_turn>user
+        You are a friendly, concise tutor running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural for spoken conversation, ideally one to three sentences.<end_of_turn>
+
+        """
+
+        for message in messages {
+            if message.role == .assistant && message.text.isEmpty {
+                continue
+            }
+
+            let roleString = message.role == .user ? "user" : "model"
+            prompt += """
+            <start_of_turn>\(roleString)
+            \(message.text)<end_of_turn>
+
+            """
+        }
+
+        prompt += "<start_of_turn>model\n"
+
+        return prompt
+    }
+}

@@ -2,20 +2,18 @@ import SwiftUI
 
 struct HomeView: View {
     @State private var selectedItem = SidebarItem.home
+    @State private var scannedISBN: ISBN?
+    @State private var conversation = TutorConversationModel()
 
     var body: some View {
         NavigationSplitView {
-            AppSidebar(selectedItem: $selectedItem)
+            AppSidebar(selectedItem: $selectedItem, conversation: conversation)
         } detail: {
             switch selectedItem {
             case .home:
                 HomeMainContent(scanAction: startScan)
             case .scan:
-                ContentUnavailableView(
-                    "Scan",
-                    systemImage: selectedItem.systemImage,
-                    description: Text("Book scanning will live here.")
-                )
+                scanContent
             case .discover:
                 ContentUnavailableView(
                     "Discover",
@@ -27,10 +25,34 @@ struct HomeView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarBackground(Color.white, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
+        .task {
+            conversation.prepareModel()
+        }
     }
 
     private func startScan() {
         selectedItem = .scan
+    }
+
+    @ViewBuilder
+    private var scanContent: some View {
+        if let scannedISBN {
+            TutorARView(
+                isbn: scannedISBN,
+                conversation: conversation,
+                scanAnotherBook: scanAnotherBook
+            )
+        } else {
+            ISBNBarcodeScannerView(onISBNScanned: handleScannedISBN)
+        }
+    }
+
+    private func handleScannedISBN(_ isbn: ISBN) {
+        scannedISBN = isbn
+    }
+
+    private func scanAnotherBook() {
+        scannedISBN = nil
     }
 }
 
