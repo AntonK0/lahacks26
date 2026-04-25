@@ -1,7 +1,7 @@
 import os
-from fastapi import FastAPI, HTTPException
+import re
+from fastapi import FastAPI, HTTPException, Form, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, constr
 import redis
 
 app = FastAPI(title="Upload Backend API")
@@ -17,8 +17,7 @@ app.add_middleware(
 
 # Use the full Redis URL from environment or the default provided by user
 REDIS_URL = os.getenv(
-    "REDIS_URL",
-    "redis://default:kzCqjkZEEp79AyqjmP3oOivR8L68BsnS@redis-13872.c289.us-west-1-2.ec2.cloud.redislabs.com:13872"
+    "REDIS_URL"
 )
 
 try:
@@ -29,17 +28,29 @@ try:
 except Exception as e:
     print(f"Error connecting to Redis: {e}")
 
-class UploadRequest(BaseModel):
-    isbn: constr(pattern=r'^\d{13}$')
-    cloudinary_url: str
-
 @app.post("/api/upload")
-async def upload_model_link(request: UploadRequest):
+async def upload_model_link(
+    isbn: str = Form(...),
+    cloudinary_url: str = Form(...),
+    textbook_id: str = Form(None),
+    pdf_file: UploadFile = File(None)
+):
+    if not re.match(r'^\d{13}$', isbn):
+        raise HTTPException(status_code=400, detail="ISBN must be 13 digits")
+        
     try:
-        redis_key = f"ISBN:{request.isbn}"
+        redis_key = f"ISBN:{isbn}"
         # Set the key to the cloudinary URL
-        redis_client.set(redis_key, request.cloudinary_url)
-        return {"message": "Successfully saved to Redis", "isbn": request.isbn, "url": request.cloudinary_url}
+        redis_client.set(redis_key, cloudinary_url)
+        
+        return {
+            "message": "Successfully saved textbook metadata to Redis",
+            "isbn": isbn, 
+            "url": cloudinary_url,
+            "textbook_id": textbook_id,
+            "pdf_uploaded": pdf_file is not None,
+            "pdf_filename": pdf_file.filename if pdf_file else None,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
