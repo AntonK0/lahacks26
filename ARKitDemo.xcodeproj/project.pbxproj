@@ -7,32 +7,24 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		77DCE0232F9C78D6003EECC6 /* lahacks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lahacks.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0C0CCB82F311D4A0003234F /* ARKitDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ARKitDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		77DCE02F2F9C78D7003EECC6 /* Exceptions for "lahacks" folder in "lahacks" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 77DCE0222F9C78D6003EECC6 /* lahacks */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		77DCE0252F9C78D6003EECC6 /* lahacks */ = {
+		C0C0CCBA2F311D4A0003234F /* ARKitDemo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				77DCE02F2F9C78D7003EECC6 /* Exceptions for "lahacks" folder in "lahacks" target */,
-			);
-			path = lahacks;
+			path = ARKitDemo;
+			sourceTree = "<group>";
+		};
+		C0C0CCD02F3124000003234F /* robot_assets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = robot_assets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		77DCE0202F9C78D6003EECC6 /* Frameworks */ = {
+		C0C0CCB52F311D4A0003234F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -42,18 +34,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		77DCE01A2F9C78D6003EECC6 = {
+		C0C0CCAF2F311D4A0003234F = {
 			isa = PBXGroup;
 			children = (
-				77DCE0252F9C78D6003EECC6 /* lahacks */,
-				77DCE0242F9C78D6003EECC6 /* Products */,
+				C0C0CCBA2F311D4A0003234F /* ARKitDemo */,
+				C0C0CCD02F3124000003234F /* robot_assets */,
+				C0C0CCB92F311D4A0003234F /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		77DCE0242F9C78D6003EECC6 /* Products */ = {
+		C0C0CCB92F311D4A0003234F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				77DCE0232F9C78D6003EECC6 /* lahacks.app */,
+				C0C0CCB82F311D4A0003234F /* ARKitDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,64 +54,65 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		77DCE0222F9C78D6003EECC6 /* lahacks */ = {
+		C0C0CCB72F311D4A0003234F /* ARKitDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 77DCE0302F9C78D7003EECC6 /* Build configuration list for PBXNativeTarget "lahacks" */;
+			buildConfigurationList = C0C0CCC32F311D4C0003234F /* Build configuration list for PBXNativeTarget "ARKitDemo" */;
 			buildPhases = (
-				77DCE01F2F9C78D6003EECC6 /* Sources */,
-				77DCE0202F9C78D6003EECC6 /* Frameworks */,
-				77DCE0212F9C78D6003EECC6 /* Resources */,
+				C0C0CCB42F311D4A0003234F /* Sources */,
+				C0C0CCB52F311D4A0003234F /* Frameworks */,
+				C0C0CCB62F311D4A0003234F /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				77DCE0252F9C78D6003EECC6 /* lahacks */,
+				C0C0CCBA2F311D4A0003234F /* ARKitDemo */,
+				C0C0CCD02F3124000003234F /* robot_assets */,
 			);
-			name = lahacks;
+			name = ARKitDemo;
 			packageProductDependencies = (
 			);
-			productName = lahacks;
-			productReference = 77DCE0232F9C78D6003EECC6 /* lahacks.app */;
+			productName = ARKitDemo;
+			productReference = C0C0CCB82F311D4A0003234F /* ARKitDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		77DCE01B2F9C78D6003EECC6 /* Project object */ = {
+		C0C0CCB02F311D4A0003234F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2640;
-				LastUpgradeCheck = 2640;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
-					77DCE0222F9C78D6003EECC6 = {
-						CreatedOnToolsVersion = 26.4.1;
+					C0C0CCB72F311D4A0003234F = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
-			buildConfigurationList = 77DCE01E2F9C78D6003EECC6 /* Build configuration list for PBXProject "lahacks" */;
+			buildConfigurationList = C0C0CCB32F311D4A0003234F /* Build configuration list for PBXProject "ARKitDemo" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 77DCE01A2F9C78D6003EECC6;
+			mainGroup = C0C0CCAF2F311D4A0003234F;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 77DCE0242F9C78D6003EECC6 /* Products */;
+			productRefGroup = C0C0CCB92F311D4A0003234F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				77DCE0222F9C78D6003EECC6 /* lahacks */,
+				C0C0CCB72F311D4A0003234F /* ARKitDemo */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		77DCE0212F9C78D6003EECC6 /* Resources */ = {
+		C0C0CCB62F311D4A0003234F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -128,7 +122,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		77DCE01F2F9C78D6003EECC6 /* Sources */ = {
+		C0C0CCB42F311D4A0003234F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -138,75 +132,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		77DCE0312F9C78D7003EECC6 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = lahacks/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = CAMERA_USAGE_DESCRIPTION;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
-				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = lahacks2026.lahacks;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		77DCE0322F9C78D7003EECC6 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = lahacks/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = CAMERA_USAGE_DESCRIPTION;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
-				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = lahacks2026.lahacks;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		77DCE0332F9C78D7003EECC6 /* Debug */ = {
+		C0C0CCC12F311D4C0003234F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -241,6 +167,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = NBQN79YZ59;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -258,7 +185,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -269,7 +196,7 @@
 			};
 			name = Debug;
 		};
-		77DCE0342F9C78D7003EECC6 /* Release */ = {
+		C0C0CCC22F311D4C0003234F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -304,6 +231,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = NBQN79YZ59;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -315,7 +243,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -325,28 +253,98 @@
 			};
 			name = Release;
 		};
+		C0C0CCC42F311D4C0003234F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M85KKJ9245;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to place 3D objects in AR";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ljit.ARKitDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C0C0CCC52F311D4C0003234F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M85KKJ9245;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to place 3D objects in AR";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ljit.ARKitDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		77DCE01E2F9C78D6003EECC6 /* Build configuration list for PBXProject "lahacks" */ = {
+		C0C0CCB32F311D4A0003234F /* Build configuration list for PBXProject "ARKitDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				77DCE0332F9C78D7003EECC6 /* Debug */,
-				77DCE0342F9C78D7003EECC6 /* Release */,
+				C0C0CCC12F311D4C0003234F /* Debug */,
+				C0C0CCC22F311D4C0003234F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		77DCE0302F9C78D7003EECC6 /* Build configuration list for PBXNativeTarget "lahacks" */ = {
+		C0C0CCC32F311D4C0003234F /* Build configuration list for PBXNativeTarget "ARKitDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				77DCE0312F9C78D7003EECC6 /* Debug */,
-				77DCE0322F9C78D7003EECC6 /* Release */,
+				C0C0CCC42F311D4C0003234F /* Debug */,
+				C0C0CCC52F311D4C0003234F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 77DCE01B2F9C78D6003EECC6 /* Project object */;
+	rootObject = C0C0CCB02F311D4A0003234F /* Project object */;
 }
