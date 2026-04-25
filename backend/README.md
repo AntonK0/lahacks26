@@ -13,6 +13,7 @@ backend/
   db.py
   embeddings.py
   models.py
+  textbook_ingestion.py
   requirements.txt
   .env.example
 ```
@@ -36,6 +37,9 @@ MONGODB_COLLECTION=textbook_chunks
 MONGODB_VECTOR_INDEX=textbook_chunks_vector_index
 EMBEDDING_MODEL=google/embeddinggemma-300m
 EMBEDDING_DIM=768
+UPLOAD_CHUNK_WORDS=320
+UPLOAD_CHUNK_OVERLAP=60
+UPLOAD_BATCH_SIZE=64
 HF_TOKEN=your_huggingface_read_token
 PORT=8000
 ALLOWED_ORIGINS=*
@@ -64,6 +68,25 @@ Health check:
 ```powershell
 Invoke-RestMethod http://localhost:8000/health
 ```
+
+## Upload Textbook
+
+Send multipart form data in this order: `isbn`, `cloudinary_url`, then `file`.
+
+```powershell
+$form = @{
+  isbn = "9780000000000"
+  cloudinary_url = "https://res.cloudinary.com/demo/raw/upload/v1/textbook.pdf"
+  file = Get-Item ".\textbook.pdf"
+}
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8000/upload-textbook `
+  -Form $form
+```
+
+The backend extracts PDF text, chunks it with the configured word window, embeds chunks with `encode_document()`, deletes existing chunks for that ISBN, and writes the replacement chunks to MongoDB Atlas with the Cloudinary URL stored on each chunk.
 
 ## Retrieve Context
 

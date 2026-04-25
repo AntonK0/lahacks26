@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+import shutil
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from urllib.parse import urlparse
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
@@ -9,7 +14,8 @@ import uvicorn
 from config import get_settings
 from db import get_collection
 from embeddings import embed_query
-from models import HealthResponse, RetrievalRequest, RetrievalResponse
+from models import HealthResponse, RetrievalRequest, RetrievalResponse, TextbookUploadResponse
+from textbook_ingestion import upload_textbook_chunks
 
 
 settings = get_settings()
@@ -37,6 +43,74 @@ def root() -> dict[str, str]:
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+def validate_cloudinary_url(value: str) -> str:
+    cloudinary_url = value.strip()
+    parsed = urlparse(cloudinary_url)
+    hostname = parsed.hostname or ""
+    if parsed.scheme not in {"http", "https"} or not hostname.endswith("cloudinary.com"):
+        raise HTTPException(status_code=400, detail="cloudinary_url must be a valid Cloudinary URL.")
+    return cloudinary_url
+
+
+def validate_pdf_upload(file: UploadFile) -> str:
+    filename = Path(file.filename or "").name
+    if not filename:
+        raise HTTPException(status_code=400, detail="file must include a PDF filename.")
+    if Path(filename).suffix.lower() != ".pdf" and file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="file must be a PDF upload.")
+    return filename
+
+
+@app.post("/upload-textbook", response_model=TextbookUploadResponse)
+def upload_textbook(
+    isbn: str = Form(...),
+    cloudinary_url: str = Form(...),
+    file: UploadFile = File(...),
+) -> TextbookUploadResponse:
+    scoped_isbn = isbn.strip()
+    if not scoped_isbn:
+        raise HTTPException(status_code=400, detail="isbn is required for textbook upload.")
+
+    validated_cloudinary_url = validate_cloudinary_url(cloudinary_url)
+    source_file = validate_pdf_upload(file)
+
+    temp_path: Path | None = None
+    try:
+        with NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_path = Path(temp_file.name)
+            shutil.copyfileobj(file.file, temp_file)
+
+        stats = upload_textbook_chunks(
+            collection=get_collection(settings),
+            pdf_path=temp_path,
+            source_file=source_file,
+            isbn=scoped_isbn,
+            cloudinary_url=validated_cloudinary_url,
+            settings=settings,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except PyMongoError as error:
+        raise HTTPException(status_code=502, detail=f"MongoDB upload failed: {error}") from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Textbook upload failed: {error}") from error
+    finally:
+        file.file.close()
+        if temp_path:
+            temp_path.unlink(missing_ok=True)
+
+    return TextbookUploadResponse(
+        collection=settings.mongodb_collection,
+        isbn=scoped_isbn,
+        cloudinary_url=validated_cloudinary_url,
+        source_file=stats.source_file,
+        deleted_count=stats.deleted_count,
+        uploaded_count=stats.uploaded_count,
+        embedding_model=settings.embedding_model,
+        embedding_dim=settings.embedding_dim,
+    )
 
 
 @app.post("/retrieve-context", response_model=RetrievalResponse)

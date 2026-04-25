@@ -4,3 +4,5 @@ pymongo
 python-dotenv
 pydantic
 sentence-transformers
+pypdf
+python-multipart

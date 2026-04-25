@@ -34,5 +34,16 @@ class RetrievalResponse(BaseModel):
     chunks: list[RetrievedChunk]
 
 
+class TextbookUploadResponse(BaseModel):
+    collection: str
+    isbn: str
+    cloudinary_url: str
+    source_file: str
+    deleted_count: int
+    uploaded_count: int
+    embedding_model: str
+    embedding_dim: int
+
+
 class HealthResponse(BaseModel):
     status: str
