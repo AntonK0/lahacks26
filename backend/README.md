@@ -13,6 +13,7 @@ backend/
   db.py
   embeddings.py
   models.py
+  redis_store.py
   textbook_ingestion.py
   requirements.txt
   .env.example
@@ -40,6 +41,8 @@ EMBEDDING_DIM=768
 UPLOAD_CHUNK_WORDS=320
 UPLOAD_CHUNK_OVERLAP=60
 UPLOAD_BATCH_SIZE=64
+UPSTASH_REDIS_REST_URL=https://<your-redis>.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
 HF_TOKEN=your_huggingface_read_token
 PORT=8000
 ALLOWED_ORIGINS=*
@@ -87,6 +90,23 @@ Invoke-RestMethod `
 ```
 
 The backend extracts PDF text, chunks it with the configured word window, embeds chunks with `encode_document()`, deletes existing chunks for that ISBN, and writes the replacement chunks to MongoDB Atlas with the Cloudinary URL stored on each chunk.
+
+After the MongoDB upload succeeds, the backend writes the iOS avatar lookup to Upstash Redis as a hash:
+
+```text
+key: <isbn>
+cloudinary_url: <cloudinary_url>
+textbook_id: <isbn>
+```
+
+Verify the Redis record with:
+
+```powershell
+curl.exe "$env:UPSTASH_REDIS_REST_URL/HGETALL/9780000000000" `
+  -H "Authorization: Bearer $env:UPSTASH_REDIS_REST_TOKEN"
+```
+
+The response should include `cloudinary_url`, the uploaded Cloudinary USDZ URL, `textbook_id`, and the ISBN.
 
 ## Retrieve Context
 
