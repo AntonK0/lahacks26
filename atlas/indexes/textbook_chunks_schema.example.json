@@ -1,0 +1,71 @@
+{
+  "bsonType": "object",
+  "required": [
+    "_id",
+    "textbook_id",
+    "isbn",
+    "source_file",
+    "page",
+    "chunk_index",
+    "text",
+    "embedding",
+    "model",
+    "embedding_dim",
+    "embedding_normalized"
+  ],
+  "properties": {
+    "_id": {
+      "bsonType": "string"
+    },
+    "textbook_id": {
+      "bsonType": "string"
+    },
+    "isbn": {
+      "bsonType": "string"
+    },
+    "source_file": {
+      "bsonType": "string"
+    },
+    "page": {
+      "bsonType": "int"
+    },
+    "chunk_index": {
+      "bsonType": "int"
+    },
+    "text": {
+      "bsonType": "string"
+    },
+    "embedding": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": [
+          "double",
+          "int",
+          "long",
+          "decimal"
+        ]
+      }
+    },
+    "model": {
+      "bsonType": "string"
+    },
+    "embedding_dim": {
+      "bsonType": "int"
+    },
+    "embedding_normalized": {
+      "bsonType": "bool"
+    },
+    "embedding_role": {
+      "bsonType": "string"
+    },
+    "chunker": {
+      "bsonType": "object"
+    },
+    "created_at": {
+      "bsonType": "date"
+    },
+    "updated_at": {
+      "bsonType": "date"
+    }
+  }
+}
