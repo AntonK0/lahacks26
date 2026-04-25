@@ -15,6 +15,8 @@ class Settings:
     mongodb_db: str
     mongodb_collection: str
     mongodb_vector_index: str
+    embedding_model: str
+    embedding_dim: int
     port: int
     allowed_origins: list[str]
 
@@ -33,6 +35,8 @@ def get_settings() -> Settings:
         mongodb_db=os.getenv("MONGODB_DB", "lahacks"),
         mongodb_collection=os.getenv("MONGODB_COLLECTION", "textbook_chunks"),
         mongodb_vector_index=os.getenv("MONGODB_VECTOR_INDEX", "textbook_chunks_vector_index"),
+        embedding_model=os.getenv("EMBEDDING_MODEL", "google/embeddinggemma-300m"),
+        embedding_dim=int(os.getenv("EMBEDDING_DIM", "768")),
         port=int(os.getenv("PORT", "8000")),
         allowed_origins=_split_csv(os.getenv("ALLOWED_ORIGINS", "*")),
     )

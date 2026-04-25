@@ -9,10 +9,7 @@ class RetrievalRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     isbn: Annotated[str, Field(min_length=1)]
-    query_vector: Annotated[
-        list[float],
-        Field(alias="queryVector", min_length=768, max_length=768),
-    ]
+    message: Annotated[str, Field(min_length=1, max_length=4000)]
     limit: Annotated[int, Field(ge=1, le=10)] = 5
     num_candidates: Annotated[
         int | None,
