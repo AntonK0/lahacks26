@@ -1,0 +1,5 @@
+sentence-transformers
+pymongo
+pypdf
+python-dotenv
+tqdm
