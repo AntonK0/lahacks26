@@ -1,6 +1,6 @@
 import Foundation
 
-struct AssistantResponseFilter {
+nonisolated struct AssistantResponseFilter {
     private var rawText = ""
 
     mutating func append(_ token: String) -> String {

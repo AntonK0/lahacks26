@@ -10,14 +10,14 @@ actor LocalLLMClient {
 
     func generateResponse(
         for prompt: String,
-        onTextUpdate: @escaping @MainActor @Sendable (String) -> Void,
-        onVisibleTextUpdate: (@Sendable (String) async -> Void)? = nil
-    ) async throws {
+        onTextUpdate: @escaping @MainActor @Sendable (String) -> Void
+    ) async throws -> String {
         let model = try loadModel(onDownload: { _ in })
         try model.cleanUp()
         _ = try model.run(prompt)
 
         var responseFilter = AssistantResponseFilter()
+        var finalVisibleText = ""
         while !Task.isCancelled {
             let result = model.waitForNextToken()
 
@@ -27,14 +27,15 @@ actor LocalLLMClient {
 
             if !result.token.isEmpty {
                 let visibleText = responseFilter.append(result.token)
+                finalVisibleText = visibleText
 
                 await MainActor.run {
                     onTextUpdate(visibleText)
                 }
-
-                await onVisibleTextUpdate?(visibleText)
             }
         }
+
+        return finalVisibleText
     }
 
     func release() {

@@ -10,6 +10,8 @@ final class ElevenLabsTTSClient: NSObject {
     private var receiveTask: Task<Void, Never>?
     private var lastVisibleText = ""
     private var openContinuation: CheckedContinuation<Void, any Error>?
+    private var finalResponseContinuation: CheckedContinuation<Void, any Error>?
+    private var hasReceivedFinalResponse = false
 
     func start() async throws {
         guard webSocketTask == nil else {
@@ -27,6 +29,7 @@ final class ElevenLabsTTSClient: NSObject {
         self.session = session
         let task = session.webSocketTask(with: url)
         self.webSocketTask = task
+        hasReceivedFinalResponse = false
         task.resume()
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
@@ -76,13 +79,25 @@ final class ElevenLabsTTSClient: NSObject {
         }
     }
 
+    func speak(_ text: String) async throws {
+        let spokenText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !spokenText.isEmpty else {
+            return
+        }
+
+        try await send(TextMessage(text: spokenText, flush: true), logDescription: "final response (\(spokenText.count) chars)")
+        try await closeTextStream()
+        try await waitForFinalResponse()
+        await audioPlayer.waitUntilIdle()
+    }
+
     func finish() async {
         guard webSocketTask != nil else {
             return
         }
 
         do {
-            try await send(TextMessage(text: "", flush: nil), logDescription: "end of stream")
+            try await closeTextStream()
         } catch {
             tearDown()
         }
@@ -139,6 +154,9 @@ final class ElevenLabsTTSClient: NSObject {
         }
 
         if response.isFinal == true {
+            hasReceivedFinalResponse = true
+            finalResponseContinuation?.resume()
+            finalResponseContinuation = nil
             tearDown()
         }
     }
@@ -157,9 +175,25 @@ final class ElevenLabsTTSClient: NSObject {
         print("[ElevenLabs] sent \(logDescription)")
     }
 
+    private func closeTextStream() async throws {
+        try await send(TextMessage(text: "", flush: nil), logDescription: "end of stream")
+    }
+
+    private func waitForFinalResponse() async throws {
+        guard !hasReceivedFinalResponse else {
+            return
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            finalResponseContinuation = continuation
+        }
+    }
+
     private func tearDown() {
         openContinuation?.resume(throwing: URLError(.cancelled))
         openContinuation = nil
+        finalResponseContinuation?.resume(throwing: URLError(.cancelled))
+        finalResponseContinuation = nil
         receiveTask?.cancel()
         receiveTask = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)

@@ -83,40 +83,22 @@ final class LocalChatViewModel {
         let assistantMessage = ChatMessage(role: .assistant, text: "")
         messages.append(assistantMessage)
         isGenerating = true
-        let ttsClient = MelangeSecrets.isElevenLabsConfigured ? ElevenLabsTTSClient() : nil
-        self.ttsClient = ttsClient
 
         generationTask = Task {
-            var activeTTSClient = ttsClient
-
-            if let ttsClient {
-                do {
-                    try await ttsClient.start()
-                } catch {
-                    activeTTSClient = nil
-                    self.ttsClient = nil
-                    errorMessage = "ElevenLabs could not start: \(error.localizedDescription)"
-                }
-            }
-
             do {
-                let streamTTSClient = activeTTSClient
-                try await client.generateResponse(
+                let finalResponse = try await client.generateResponse(
                     for: prompt,
                     onTextUpdate: { [weak self] text in
                         self?.replaceText(text, in: assistantMessage.id)
-                    },
-                    onVisibleTextUpdate: { text in
-                        await streamTTSClient?.streamVisibleText(text)
                     }
                 )
                 if Task.isCancelled {
-                    await activeTTSClient?.cancel()
+                    await ttsClient?.cancel()
                 } else {
-                    await activeTTSClient?.finish()
+                    await speakFinalResponse(finalResponse)
                 }
             } catch {
-                await activeTTSClient?.cancel()
+                await ttsClient?.cancel()
                 errorMessage = "Gemma could not generate a response: \(error.localizedDescription)"
                 removeEmptyAssistantMessage(id: assistantMessage.id)
             }
@@ -156,6 +138,26 @@ final class LocalChatViewModel {
         }
 
         messages.remove(at: index)
+    }
+
+    private func speakFinalResponse(_ text: String) async {
+        let spokenText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard MelangeSecrets.isElevenLabsConfigured, !spokenText.isEmpty else {
+            return
+        }
+
+        let ttsClient = ElevenLabsTTSClient()
+        self.ttsClient = ttsClient
+
+        do {
+            try await ttsClient.start()
+            try await ttsClient.speak(spokenText)
+        } catch {
+            await ttsClient.cancel()
+            errorMessage = "ElevenLabs could not speak: \(error.localizedDescription)"
+        }
+
+        self.ttsClient = nil
     }
 
     private static func chatPrompt(from messages: [ChatMessage]) -> String {
