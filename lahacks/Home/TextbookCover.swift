@@ -19,7 +19,8 @@ struct TextbookCover: View {
         textbook: HomeTextbook(
             id: "college-algebra",
             title: "College Algebra 2e",
-            imageName: "CollegeAlgebraCover"
+            imageName: "CollegeAlgebraCover",
+            purchaseURL: URL(string: "https://he.kendallhunt.com/product/openstax-college-algebra-0")!
         )
     )
     .padding()
