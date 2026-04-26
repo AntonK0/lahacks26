@@ -14,12 +14,19 @@ type ModelSource = 'default' | 'custom';
 type SubmitStatus = 'idle' | 'uploading-avatar' | 'submitting' | 'success' | 'error';
 
 interface UploadResponse {
+  collection: string;
+  isbn: string;
+  cloudinary_url: string;
+  source_file: string;
+  deleted_count: number;
+  uploaded_count: number;
+  embedding_model: string;
+  embedding_dim: number;
+}
+
+interface UploadErrorResponse {
+  detail?: string | Array<{ msg?: string }>;
   message?: string;
-  isbn?: string;
-  url?: string;
-  textbook_id?: string;
-  pdf_uploaded?: boolean;
-  pdf_filename?: string | null;
 }
 
 interface CloudinaryUploadResponse {
@@ -29,10 +36,21 @@ interface CloudinaryUploadResponse {
   };
 }
 
-const uploadApiUrl = import.meta.env.VITE_UPLOAD_API_URL || 'http://127.0.0.1:8000/api/upload';
+const uploadApiUrl = import.meta.env.VITE_UPLOAD_API_URL || 'https://lahacks26.onrender.com/upload-textbook';
 const defaultJitCloudinaryUrl = import.meta.env.VITE_DEFAULT_JIT_CLOUDINARY_URL || '';
 const cloudinaryCloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const cloudinaryUploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+
+function formatError(result: UploadErrorResponse | null, fallback: string) {
+  if (!result) return fallback;
+  if (typeof result.detail === 'string') return result.detail;
+  if (Array.isArray(result.detail) && result.detail[0]?.msg) return result.detail[0].msg;
+  return result.message || fallback;
+}
+
+function isZipFile(file: File) {
+  return file.name.toLowerCase().endsWith('.zip');
+}
 
 function formatFileSize(bytes: number) {
   if (!bytes) return '0 KB';
@@ -53,11 +71,15 @@ async function uploadAvatarToCloudinary(file: File) {
     throw new Error('Cloudinary cloud name and upload preset must be configured before uploading a custom avatar.');
   }
 
+  if (!isZipFile(file)) {
+    throw new Error('Custom avatars must be uploaded as one prebuilt .zip file containing the .usdc animation files.');
+  }
+
   const uploadData = new FormData();
   uploadData.append('file', file);
   uploadData.append('upload_preset', cloudinaryUploadPreset);
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/auto/upload`, {
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/raw/upload`, {
     method: 'POST',
     body: uploadData,
   });
@@ -72,7 +94,6 @@ async function uploadAvatarToCloudinary(file: File) {
 
 function App() {
   const [isbn, setIsbn] = useState('');
-  const [textbookId, setTextbookId] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [modelSource, setModelSource] = useState<ModelSource>('default');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -80,9 +101,10 @@ function App() {
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle');
   const [submitError, setSubmitError] = useState('');
   const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(null);
+  const avatarZipInstructions = 'Create one .zip containing the avatar animation .usdc files, for example Idle.usdc, Wave.usdc, Yes.usdc, and No.usdc. Upload that zip here.';
 
   const normalizedIsbn = normalizeIsbn(isbn);
-  const modelRequirementMet = modelSource === 'default' ? Boolean(defaultJitCloudinaryUrl) : Boolean(avatarFile);
+  const modelRequirementMet = modelSource === 'default' ? Boolean(defaultJitCloudinaryUrl) : Boolean(avatarFile && isZipFile(avatarFile));
   const canPreparePackage = normalizedIsbn.length === 13 && Boolean(pdfFile) && modelRequirementMet && submitStatus !== 'uploading-avatar' && submitStatus !== 'submitting';
   const completedSteps = Number(normalizedIsbn.length === 13) + Number(Boolean(pdfFile)) + Number(modelRequirementMet);
   const isSubmitting = submitStatus === 'uploading-avatar' || submitStatus === 'submitting';
@@ -124,29 +146,31 @@ function App() {
       return;
     }
 
+    if (modelSource === 'custom' && avatarFile && !isZipFile(avatarFile)) {
+      setSubmitStatus('error');
+      setSubmitError('Custom avatars must be uploaded as one prebuilt .zip file.');
+      return;
+    }
+
     try {
       const resolvedCloudinaryUrl = await resolveCloudinaryUrl();
       const payload = new FormData();
       payload.append('isbn', normalizedIsbn);
       payload.append('cloudinary_url', resolvedCloudinaryUrl);
-      payload.append('pdf_file', pdfFile);
-
-      if (textbookId.trim()) {
-        payload.append('textbook_id', textbookId.trim());
-      }
+      payload.append('file', pdfFile);
 
       setSubmitStatus('submitting');
       const response = await fetch(uploadApiUrl, {
         method: 'POST',
         body: payload,
       });
-      const result = (await response.json().catch(() => null)) as (UploadResponse & { detail?: string }) | null;
+      const result = (await response.json().catch(() => null)) as (UploadResponse & UploadErrorResponse) | null;
 
       if (!response.ok) {
-        throw new Error(result?.detail || 'FastAPI upload failed.');
+        throw new Error(formatError(result, 'FastAPI upload failed.'));
       }
 
-      setUploadResponse(result);
+      setUploadResponse(result as UploadResponse);
       setSubmitStatus('success');
     } catch (error) {
       setSubmitStatus('error');
@@ -253,22 +277,9 @@ function App() {
                           </div>
                         </label>
 
-                        <label className="form-control w-full sm:col-span-2">
-                          <div className="label">
-                            <span className="label-text text-sm font-black">Textbook ID</span>
-                            <span className="label-text-alt">Optional</span>
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="bio_textbook_v1"
-                            className="input input-bordered h-12 w-full rounded-xl bg-base-100 text-base"
-                            value={textbookId}
-                            onChange={(event) => setTextbookId(event.target.value)}
-                          />
-                          <div className="label">
-                            <span className="label-text-alt">Stored with the upload metadata when provided.</span>
-                          </div>
-                        </label>
+                        <div className="rounded-xl bg-base-100 p-4 text-sm text-base-content/65 sm:col-span-2">
+                          The backend receives only the ISBN, the textbook PDF, and the Cloudinary URL for the avatar package.
+                        </div>
                       </div>
 
                       <div className="h-px bg-base-300" />
@@ -340,13 +351,18 @@ function App() {
                             />
                             <div>
                               <h4 className="font-black">Custom JIT avatar</h4>
-                              <p className="text-sm text-base-content/65">Upload this file to Cloudinary first, then send its secure URL.</p>
+                              <p className="text-sm text-base-content/65">Upload one prebuilt avatar zip to Cloudinary, then send its secure URL.</p>
                             </div>
+                          </div>
+
+                          <div className="mb-3 rounded-xl bg-base-200 p-3 text-xs font-semibold text-base-content/65" title={avatarZipInstructions}>
+                            Need the zip format? Include each animation as a `.usdc` file at the zip root, such as Idle, Wave, Yes, and No.
                           </div>
 
                           <input
                             type="file"
-                            accept=".usdc,.usdz,.glb,.gltf,.zip"
+                            accept=".zip,application/zip,application/x-zip-compressed"
+                            title={avatarZipInstructions}
                             className="file-input file-input-bordered file-input-primary w-full rounded-xl bg-base-100"
                             onChange={(event) => {
                               setModelSource('custom');
@@ -360,7 +376,7 @@ function App() {
                       {modelSource === 'custom' && (
                         <div className="mt-4 rounded-[1.1rem] border border-dashed border-base-300 bg-base-100 p-4">
                           <div className="mb-3 flex items-center justify-between gap-3">
-                            <h4 className="font-black">Selected avatar file</h4>
+                            <h4 className="font-black">Selected avatar zip</h4>
                             <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-content">
                               {avatarFile ? '1 file' : '0 files'}
                             </span>
@@ -369,10 +385,14 @@ function App() {
                           {avatarFile ? (
                             <div className="rounded-xl bg-base-200 p-3 text-sm">
                               <div className="font-bold">{avatarFile.name}</div>
-                              <div className="text-base-content/60">{formatFileSize(avatarFile.size)}</div>
+                              <div className={isZipFile(avatarFile) ? 'text-base-content/60' : 'text-error'}>
+                                {isZipFile(avatarFile)
+                                  ? formatFileSize(avatarFile.size)
+                                  : 'Choose a .zip file containing the .usdc animation files.'}
+                              </div>
                             </div>
                           ) : (
-                            <p className="text-sm text-base-content/60">No custom JIT avatar file selected yet.</p>
+                            <p className="text-sm text-base-content/60">No custom JIT avatar zip selected yet.</p>
                           )}
                         </div>
                       )}
@@ -386,7 +406,10 @@ function App() {
 
                       {submitStatus === 'success' && uploadResponse && (
                         <div className="rounded-xl border border-success/20 bg-success/10 p-3 text-sm text-success-content">
-                          {uploadResponse.message || 'Package metadata saved successfully.'}
+                          <p className="font-bold">Textbook package uploaded successfully.</p>
+                          <p className="mt-1">
+                            ISBN {uploadResponse.isbn} saved {uploadResponse.uploaded_count} chunks from {uploadResponse.source_file}.
+                          </p>
                         </div>
                       )}
 
@@ -399,7 +422,7 @@ function App() {
                       <div className="mt-6 flex justify-end gap-2 border-t border-base-300 pt-5">
                         <button type="button" className="btn btn-ghost rounded-xl" disabled={isSubmitting}>Save draft</button>
                         <button type="submit" className="btn btn-primary rounded-xl" disabled={!canPreparePackage}>
-                          {submitStatus === 'uploading-avatar' && 'Uploading avatar...'}
+                          {submitStatus === 'uploading-avatar' && 'Uploading avatar zip...'}
                           {submitStatus === 'submitting' && 'Sending to FastAPI...'}
                           {!isSubmitting && 'Prepare package'}
                         </button>

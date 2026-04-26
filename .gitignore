@@ -5,7 +5,10 @@ skills-lock.json
 .venv/
 __pycache__/
 *.py[cod]
-
+.agents
+.derivedData/
 ingestion/.env
 ingestion/data/
 ingestion/output/
+MelangeSecrets.swift
+skills-lock.json
