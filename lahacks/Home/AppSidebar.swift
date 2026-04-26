@@ -25,12 +25,14 @@ struct AppSidebar: View {
                         Label(item.title, systemImage: item.systemImage)
                             .symbolVariant(selectedItem == item ? .fill : .none)
                             .font(.body)
-                            .foregroundStyle(selectedItem == item ? HomeDesign.selectedOrange : HomeDesign.primaryLabel)
+                            .foregroundStyle(sidebarLabelColor(for: item))
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .contentShape(.rect)
                             .accessibilityAddTraits(selectedItem == item ? .isSelected : [])
                     }
                     .buttonStyle(.plain)
+                    .disabled(!item.isSelectableInSidebar)
+                    .opacity(item.isSelectableInSidebar ? 1 : 0.45)
                     .listRowBackground(Color.clear)
                 }
                 .listStyle(.sidebar)
@@ -51,6 +53,13 @@ struct AppSidebar: View {
             ideal: HomeDesign.sidebarWidth,
             max: 260
         )
+    }
+
+    private func sidebarLabelColor(for item: SidebarItem) -> Color {
+        if !item.isSelectableInSidebar {
+            return Color.secondary
+        }
+        return selectedItem == item ? HomeDesign.selectedOrange : HomeDesign.primaryLabel
     }
 }
 

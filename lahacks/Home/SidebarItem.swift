@@ -28,4 +28,9 @@ enum SidebarItem: String, CaseIterable, Hashable, Identifiable {
             "books.vertical"
         }
     }
+
+    /// Sidebar rows that are not yet implemented stay visible but inactive.
+    var isSelectableInSidebar: Bool {
+        self != .discover
+    }
 }
