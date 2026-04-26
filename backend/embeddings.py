@@ -44,10 +44,13 @@ def embed_query(message: str, settings: Settings | None = None) -> list[float]:
 
 def embed_documents(texts: list[str], settings: Settings | None = None) -> list[list[float]]:
     active_settings = settings or get_settings()
+    if active_settings.document_embedding_batch_size < 1:
+        raise ValueError("DOCUMENT_EMBEDDING_BATCH_SIZE must be at least 1.")
+
     model = get_embedding_model(active_settings.embedding_model)
     embeddings = model.encode_document(
         texts,
-        batch_size=min(32, max(1, len(texts))),
+        batch_size=min(active_settings.document_embedding_batch_size, max(1, len(texts))),
         normalize_embeddings=True,
         convert_to_numpy=True,
         show_progress_bar=False,

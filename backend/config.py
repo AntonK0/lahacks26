@@ -17,6 +17,7 @@ class Settings:
     mongodb_vector_index: str
     embedding_model: str
     embedding_dim: int
+    document_embedding_batch_size: int
     upload_chunk_words: int
     upload_chunk_overlap: int
     upload_batch_size: int
@@ -42,9 +43,10 @@ def get_settings() -> Settings:
         mongodb_vector_index=os.getenv("MONGODB_VECTOR_INDEX", "textbook_chunks_vector_index"),
         embedding_model=os.getenv("EMBEDDING_MODEL", "google/embeddinggemma-300m"),
         embedding_dim=int(os.getenv("EMBEDDING_DIM", "768")),
+        document_embedding_batch_size=int(os.getenv("DOCUMENT_EMBEDDING_BATCH_SIZE", "4")),
         upload_chunk_words=int(os.getenv("UPLOAD_CHUNK_WORDS", "320")),
         upload_chunk_overlap=int(os.getenv("UPLOAD_CHUNK_OVERLAP", "60")),
-        upload_batch_size=int(os.getenv("UPLOAD_BATCH_SIZE", "64")),
+        upload_batch_size=int(os.getenv("UPLOAD_BATCH_SIZE", "8")),
         upstash_redis_rest_url=os.getenv("UPSTASH_REDIS_REST_URL"),
         upstash_redis_rest_token=os.getenv("UPSTASH_REDIS_REST_TOKEN"),
         port=int(os.getenv("PORT", "8000")),
