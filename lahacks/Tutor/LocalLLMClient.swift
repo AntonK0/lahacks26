@@ -10,7 +10,7 @@ actor LocalLLMClient {
 
     func generateResponse(
         for prompt: String,
-        onTextUpdate: @escaping @MainActor @Sendable (String) -> Void
+        onTextUpdate: @escaping @MainActor @Sendable (LocalLLMStreamUpdate) -> Void
     ) async throws -> String {
         let model = try loadModel(onDownload: { _ in })
         try model.cleanUp()
@@ -26,11 +26,18 @@ actor LocalLLMClient {
             }
 
             if !result.token.isEmpty {
-                let visibleText = responseFilter.append(result.token)
-                finalVisibleText = visibleText
+                let filtered = responseFilter.append(result.token)
+                finalVisibleText = filtered.visibleText
 
                 await MainActor.run {
-                    onTextUpdate(visibleText)
+                    onTextUpdate(
+                        LocalLLMStreamUpdate(
+                            rawToken: result.token,
+                            visibleText: filtered.visibleText,
+                            isSafeForSpeech: filtered.isSafeForSpeech,
+                            generatedTokens: result.generatedTokens
+                        )
+                    )
                 }
             }
         }

@@ -63,8 +63,13 @@ final class TutorConversationModel {
     private var earlyStoppedText: String?
     private var textbookISBN: ISBN?
     private var atlasCollection: String?
+    private var currentPipelineStartedAt: Date?
+    private var didLogFirstRawToken = false
+    private var didLogFirstVisibleToken = false
+    private var didLogFirstSpeechSafeToken = false
 
     private static let ragContextCharacterBudget = 5_000
+    private static let acknowledgementText = "Let me check that part of the textbook."
 
     var isSpeaking: Bool { state == .speaking }
 
@@ -247,9 +252,11 @@ final class TutorConversationModel {
     }
 
     private func stopAndProcess() {
+        currentPipelineStartedAt = .now
         let userText = speechModel.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         speechModel.stopListening()
         logger.info("Mic off — captured \(userText.count) chars")
+        logLatency("mic stop", details: "captured \(userText.count) chars")
 
         guard !userText.isEmpty else {
             state = .idle
@@ -266,6 +273,9 @@ final class TutorConversationModel {
         rawTokenCount = 0
         thinkingStartedAt = .now
         earlyStoppedText = nil
+        didLogFirstRawToken = false
+        didLogFirstVisibleToken = false
+        didLogFirstSpeechSafeToken = false
 
         guard let textbookISBN else {
             errorMessage = "Textbook context is still loading. Try again in a moment."
@@ -280,6 +290,7 @@ final class TutorConversationModel {
 
         state = .retrieving
         logger.info("Retrieval started (message=\(lastUserText.count, privacy: .public) chars)")
+        logLatency("retrieval start", details: "message \(lastUserText.count) chars")
 
         pipelineTask = Task { [weak self, retrievalService, llmClient] in
             guard let self else { return }
@@ -290,6 +301,7 @@ final class TutorConversationModel {
                     isbn: textbookISBN,
                     message: lastUserText
                 )
+                self.logLatency("retrieval end", details: "\(retrieval.chunks.count) chunks")
                 if Task.isCancelled {
                     self.state = .idle
                     self.thinkingStartedAt = nil
@@ -308,6 +320,7 @@ final class TutorConversationModel {
             }
 
             let prompt = Self.chatPrompt(from: self.messages, retrieval: retrieval)
+            self.logLatency("prompt ready", details: "\(prompt.count) chars")
             let assistantMessage = ChatMessage(role: .assistant, text: "")
             self.messages.append(assistantMessage)
             let assistantID = assistantMessage.id
@@ -315,23 +328,27 @@ final class TutorConversationModel {
             self.state = .thinking
             self.logger.info("Pipeline started (prompt=\(prompt.count, privacy: .public) chars, chunks=\(retrieval.chunks.count, privacy: .public))")
 
+            let streamingClient = await self.startStreamingSpeech()
             let finalResponse: String
             do {
+                self.logLatency("Gemma run start")
                 finalResponse = try await llmClient.generateResponse(for: prompt) { [weak self] streamed in
                     guard let self else { return }
-                    self.handleStreamed(streamed, assistantID: assistantID)
+                    self.handleStreamed(streamed, assistantID: assistantID, ttsClient: streamingClient)
                 }
             } catch {
                 if !Task.isCancelled {
                     self.errorMessage = "Tutor failed to respond: \(error.localizedDescription)"
                     self.logger.error("LLM error: \(error.localizedDescription, privacy: .public)")
                 }
+                await streamingClient?.cancel()
                 self.removeEmptyAssistantMessage(id: assistantID)
                 self.state = .idle
                 self.thinkingStartedAt = nil
                 self.pipelineTask = nil
                 return
             }
+            self.logLatency("final token", details: "\(finalResponse.count) visible chars")
 
             let cancelled = Task.isCancelled
             let textToSpeak: String
@@ -340,6 +357,7 @@ final class TutorConversationModel {
                 self.logger.info("Pipeline early-stopped on <end_of_turn> (chars=\(early.count))")
             } else if cancelled {
                 self.logger.info("Pipeline cancelled by user")
+                await streamingClient?.cancel()
                 self.removeEmptyAssistantMessage(id: assistantID)
                 self.state = .idle
                 self.thinkingStartedAt = nil
@@ -355,6 +373,7 @@ final class TutorConversationModel {
             self.thinkingStartedAt = nil
 
             if textToSpeak.isEmpty {
+                await streamingClient?.cancel()
                 self.removeEmptyAssistantMessage(id: assistantID)
                 self.state = .idle
                 self.pipelineTask = nil
@@ -363,20 +382,28 @@ final class TutorConversationModel {
 
             self.replaceText(textToSpeak, in: assistantID)
             self.partialAssistantText = textToSpeak
-            await self.speak(textToSpeak)
+            await self.finishStreamingSpeech(streamingClient, textToSpeak: textToSpeak)
             self.pipelineTask = nil
         }
     }
 
-    private func handleStreamed(_ streamed: String, assistantID: ChatMessage.ID) {
+    private func handleStreamed(
+        _ streamed: LocalLLMStreamUpdate,
+        assistantID: ChatMessage.ID,
+        ttsClient: ElevenLabsTTSClient?
+    ) {
         rawTokenCount += 1
+        if !didLogFirstRawToken {
+            didLogFirstRawToken = true
+            logLatency("first raw token", details: "generated \(streamed.generatedTokens) tokens")
+        }
 
         if earlyStoppedText != nil {
             return
         }
 
-        if let endRange = streamed.range(of: "<end_of_turn>") {
-            let truncated = String(streamed[..<endRange.lowerBound])
+        if let endRange = streamed.visibleText.range(of: "<end_of_turn>") {
+            let truncated = String(streamed.visibleText[..<endRange.lowerBound])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             earlyStoppedText = truncated
             partialAssistantText = truncated
@@ -385,8 +412,78 @@ final class TutorConversationModel {
             return
         }
 
-        partialAssistantText = streamed
-        replaceText(streamed, in: assistantID)
+        if !streamed.visibleText.isEmpty, !didLogFirstVisibleToken {
+            didLogFirstVisibleToken = true
+            logLatency("first visible token", details: "\(streamed.visibleText.count) chars")
+        }
+
+        partialAssistantText = streamed.visibleText
+        replaceText(streamed.visibleText, in: assistantID)
+
+        if streamed.isSafeForSpeech, !streamed.visibleText.isEmpty, !didLogFirstSpeechSafeToken {
+            didLogFirstSpeechSafeToken = true
+            logLatency("first speech-safe token", details: "\(streamed.visibleText.count) chars")
+        }
+
+        _ = ttsClient
+    }
+
+    private func startStreamingSpeech() async -> ElevenLabsTTSClient? {
+        guard MelangeSecrets.isElevenLabsConfigured else {
+            return nil
+        }
+
+        let client = makeTimedTTSClient()
+        ttsClient = client
+        state = .speaking
+
+        do {
+            try await client.start()
+            try await client.speakAcknowledgement(Self.acknowledgementText)
+            return client
+        } catch {
+            if !Task.isCancelled {
+                logger.error("Initial ElevenLabs acknowledgement failed: \(error.localizedDescription, privacy: .public)")
+            }
+            await client.cancel()
+            ttsClient = nil
+            state = .thinking
+            return nil
+        }
+    }
+
+    private func finishStreamingSpeech(_ client: ElevenLabsTTSClient?, textToSpeak: String) async {
+        guard let client else {
+            await speak(textToSpeak)
+            return
+        }
+
+        do {
+            try await client.speak(textToSpeak)
+        } catch {
+            if !Task.isCancelled {
+                errorMessage = "Voice playback failed: \(error.localizedDescription)"
+                logger.error("ElevenLabs failed: \(error.localizedDescription, privacy: .public)")
+            }
+            await client.cancel()
+        }
+
+        ttsClient = nil
+        state = .idle
+    }
+
+    private func makeTimedTTSClient() -> ElevenLabsTTSClient {
+        ElevenLabsTTSClient(
+            onSocketOpen: { [weak self] in
+                self?.logLatency("TTS socket open")
+            },
+            onFirstAudioChunk: { [weak self] in
+                self?.logLatency("first audio chunk")
+            },
+            onPlaybackDone: { [weak self] in
+                self?.logLatency("playback done")
+            }
+        )
     }
 
     private func speak(_ text: String) async {
@@ -395,7 +492,7 @@ final class TutorConversationModel {
             return
         }
 
-        let client = ElevenLabsTTSClient()
+        let client = makeTimedTTSClient()
         ttsClient = client
         state = .speaking
         logger.info("Speaking via ElevenLabs (\(text.count) chars)")
@@ -415,6 +512,15 @@ final class TutorConversationModel {
         state = .idle
     }
 
+    private func logLatency(_ event: String, details: String = "") {
+        let elapsed = currentPipelineStartedAt.map { Date.now.timeIntervalSince($0) } ?? 0
+        if details.isEmpty {
+            logger.info("Tutor latency — \(event, privacy: .public): +\(elapsed, privacy: .public)s")
+        } else {
+            logger.info("Tutor latency — \(event, privacy: .public): +\(elapsed, privacy: .public)s (\(details, privacy: .public))")
+        }
+    }
+
     private func replaceText(_ text: String, in messageID: ChatMessage.ID) {
         guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return }
         messages[index].text = text
@@ -429,7 +535,9 @@ final class TutorConversationModel {
         let contextBlock = ragContextBlock(from: retrieval)
         var prompt = """
         <start_of_turn>user
-        You are a friendly, concise tutor running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural for spoken conversation, ideally one to three sentences. Keep the responses strictly in paragraph form. Do not use any bulletpoints. Do not use any numbered lists. <end_of_turn>
+        You are a friendly, concise tutor running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural and somewhat enthusiastic for spoken, engaging conversation, ideally one to three sentences. Keep the responses strictly in paragraph form. Do not use any bulletpoints. Do not use any numbered lists.
+
+        Important output rule: when you are ready to give the answer the student should hear, write exactly SPOKEN_ANSWER: and then the answer. Do not put any reasoning, analysis, scratchpad, or hidden thought after SPOKEN_ANSWER:. <end_of_turn>
 
         <start_of_turn>user
         Use the retrieved textbook context below to ground your next answer. If the context is empty or does not contain the answer, say "I couldn't find that in the textbook context" and ask the student to try a more specific question.

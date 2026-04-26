@@ -6,6 +6,7 @@ final class ElevenLabsAudioPlayer: NSObject, AVAudioPlayerDelegate {
     private var queuedAudio: [Data] = []
     private var currentPlayer: AVAudioPlayer?
     private var idleContinuation: CheckedContinuation<Void, Never>?
+    private var idleTimeoutTask: Task<Void, Never>?
 
     static func configureSession() throws {
         let session = AVAudioSession.sharedInstance()
@@ -22,16 +23,28 @@ final class ElevenLabsAudioPlayer: NSObject, AVAudioPlayerDelegate {
         currentPlayer?.stop()
         currentPlayer = nil
         queuedAudio.removeAll()
+        idleTimeoutTask?.cancel()
+        idleTimeoutTask = nil
         notifyIdleIfNeeded()
     }
 
-    func waitUntilIdle() async {
+    func waitUntilIdle(timeout: Duration? = nil) async {
         guard currentPlayer != nil || !queuedAudio.isEmpty else {
             return
         }
 
         await withCheckedContinuation { continuation in
+            idleTimeoutTask?.cancel()
             idleContinuation = continuation
+            guard let timeout else { return }
+
+            idleTimeoutTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: timeout)
+                guard let self else { return }
+                idleContinuation?.resume()
+                idleContinuation = nil
+                idleTimeoutTask = nil
+            }
         }
     }
 
@@ -74,6 +87,8 @@ final class ElevenLabsAudioPlayer: NSObject, AVAudioPlayerDelegate {
             return
         }
 
+        idleTimeoutTask?.cancel()
+        idleTimeoutTask = nil
         idleContinuation?.resume()
         idleContinuation = nil
     }

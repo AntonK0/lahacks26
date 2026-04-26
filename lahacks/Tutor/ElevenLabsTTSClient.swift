@@ -5,13 +5,29 @@ final class ElevenLabsTTSClient: NSObject {
     private let audioPlayer = ElevenLabsAudioPlayer()
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
+    private let onSocketOpen: @MainActor @Sendable () -> Void
+    private let onFirstAudioChunk: @MainActor @Sendable () -> Void
+    private let onPlaybackDone: @MainActor @Sendable () -> Void
     private var webSocketTask: URLSessionWebSocketTask?
     private var session: URLSession?
     private var receiveTask: Task<Void, Never>?
+    private var keepAliveTask: Task<Void, Never>?
     private var lastVisibleText = ""
     private var openContinuation: CheckedContinuation<Void, any Error>?
     private var finalResponseContinuation: CheckedContinuation<Void, any Error>?
     private var hasReceivedFinalResponse = false
+    private var hasReceivedAudio = false
+
+    init(
+        onSocketOpen: @escaping @MainActor @Sendable () -> Void = {},
+        onFirstAudioChunk: @escaping @MainActor @Sendable () -> Void = {},
+        onPlaybackDone: @escaping @MainActor @Sendable () -> Void = {}
+    ) {
+        self.onSocketOpen = onSocketOpen
+        self.onFirstAudioChunk = onFirstAudioChunk
+        self.onPlaybackDone = onPlaybackDone
+        super.init()
+    }
 
     func start() async throws {
         guard webSocketTask == nil else {
@@ -30,6 +46,7 @@ final class ElevenLabsTTSClient: NSObject {
         let task = session.webSocketTask(with: url)
         self.webSocketTask = task
         hasReceivedFinalResponse = false
+        hasReceivedAudio = false
         task.resume()
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
@@ -38,6 +55,9 @@ final class ElevenLabsTTSClient: NSObject {
 
         receiveTask = Task { [weak self] in
             await self?.receiveLoop()
+        }
+        keepAliveTask = Task { [weak self] in
+            await self?.sendKeepAlives()
         }
 
         do {
@@ -79,6 +99,16 @@ final class ElevenLabsTTSClient: NSObject {
         }
     }
 
+    func speakAcknowledgement(_ text: String) async throws {
+        let spokenText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !spokenText.isEmpty else {
+            return
+        }
+
+        lastVisibleText = spokenText
+        try await send(TextMessage(text: spokenText, flush: true), logDescription: "acknowledgement (\(spokenText.count) chars)")
+    }
+
     func speak(_ text: String) async throws {
         let spokenText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !spokenText.isEmpty else {
@@ -86,21 +116,35 @@ final class ElevenLabsTTSClient: NSObject {
         }
 
         try await send(TextMessage(text: spokenText, flush: true), logDescription: "final response (\(spokenText.count) chars)")
+        stopKeepAlives()
         try await closeTextStream()
-        try await waitForFinalResponse()
-        await audioPlayer.waitUntilIdle()
+        do {
+            try await waitForFinalResponse(timeout: .seconds(8))
+        } catch {
+            print("[ElevenLabs] final response timeout: \(error)")
+        }
+        await audioPlayer.waitUntilIdle(timeout: .seconds(45))
+        onPlaybackDone()
+        tearDown()
     }
 
-    func finish() async {
+    func finish() async throws {
         guard webSocketTask != nil else {
+            await audioPlayer.waitUntilIdle(timeout: .seconds(45))
+            onPlaybackDone()
             return
         }
 
+        stopKeepAlives()
+        try await closeTextStream(flush: true)
         do {
-            try await closeTextStream()
+            try await waitForFinalResponse(timeout: .seconds(8))
         } catch {
-            tearDown()
+            print("[ElevenLabs] final response timeout: \(error)")
         }
+        await audioPlayer.waitUntilIdle(timeout: .seconds(45))
+        onPlaybackDone()
+        tearDown()
     }
 
     func cancel() async {
@@ -127,6 +171,25 @@ final class ElevenLabsTTSClient: NSObject {
         }
     }
 
+    private func sendKeepAlives() async {
+        while !Task.isCancelled {
+            do {
+                try await Task.sleep(for: .seconds(10))
+                try await send(TextMessage(text: " ", flush: nil), logDescription: "keepalive")
+            } catch {
+                if !Task.isCancelled {
+                    tearDown()
+                }
+                return
+            }
+        }
+    }
+
+    private func stopKeepAlives() {
+        keepAliveTask?.cancel()
+        keepAliveTask = nil
+    }
+
     private func handle(_ message: URLSessionWebSocketTask.Message) {
         let data: Data
 
@@ -150,6 +213,10 @@ final class ElevenLabsTTSClient: NSObject {
         }
 
         if let audio = response.audio, let audioData = Data(base64Encoded: audio) {
+            if !hasReceivedAudio {
+                hasReceivedAudio = true
+                onFirstAudioChunk()
+            }
             audioPlayer.enqueue(audioData)
         }
 
@@ -175,13 +242,26 @@ final class ElevenLabsTTSClient: NSObject {
         print("[ElevenLabs] sent \(logDescription)")
     }
 
-    private func closeTextStream() async throws {
-        try await send(TextMessage(text: "", flush: nil), logDescription: "end of stream")
+    private func closeTextStream(flush: Bool? = nil) async throws {
+        try await send(TextMessage(text: "", flush: flush), logDescription: "end of stream")
     }
 
-    private func waitForFinalResponse() async throws {
+    private func waitForFinalResponse(timeout: Duration? = nil) async throws {
         guard !hasReceivedFinalResponse else {
             return
+        }
+
+        let timeoutTask = timeout.map { timeout in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: timeout)
+                guard let self, !Task.isCancelled else { return }
+                finalResponseContinuation?.resume(throwing: URLError(.timedOut))
+                finalResponseContinuation = nil
+            }
+        }
+
+        defer {
+            timeoutTask?.cancel()
         }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
@@ -196,6 +276,7 @@ final class ElevenLabsTTSClient: NSObject {
         finalResponseContinuation = nil
         receiveTask?.cancel()
         receiveTask = nil
+        stopKeepAlives()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         session?.invalidateAndCancel()
@@ -212,6 +293,7 @@ extension ElevenLabsTTSClient: URLSessionWebSocketDelegate {
     ) {
         print("[ElevenLabs] WebSocket connection opened")
         Task { @MainActor in
+            onSocketOpen()
             openContinuation?.resume()
             openContinuation = nil
         }

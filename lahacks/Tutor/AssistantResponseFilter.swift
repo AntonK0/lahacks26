@@ -3,15 +3,25 @@ import Foundation
 nonisolated struct AssistantResponseFilter {
     private var rawText = ""
 
-    mutating func append(_ token: String) -> String {
+    mutating func append(_ token: String) -> AssistantResponseFilterOutput {
         rawText.append(token)
 
         return displayText(from: rawText)
     }
 
-    private func displayText(from text: String) -> String {
+    private func displayText(from text: String) -> AssistantResponseFilterOutput {
+        if let spokenAnswerRange = text.range(of: "SPOKEN_ANSWER:", options: [.caseInsensitive, .backwards]) {
+            return AssistantResponseFilterOutput(
+                visibleText: String(text[spokenAnswerRange.upperBound...]).trimmedGeneratedAnswer(),
+                isSafeForSpeech: true
+            )
+        }
+
         if let finalRange = text.range(of: "<channel>final") ?? text.range(of: "<|channel|>final") {
-            return String(text[finalRange.upperBound...]).trimmedGeneratedAnswer()
+            return AssistantResponseFilterOutput(
+                visibleText: String(text[finalRange.upperBound...]).trimmedGeneratedAnswer(),
+                isSafeForSpeech: true
+            )
         }
 
         if let thoughtStartRange = text.range(of: "<channel>thought") ?? text.range(of: "<|channel|>thought") {
@@ -20,23 +30,32 @@ nonisolated struct AssistantResponseFilter {
             if let endThoughtRange = remainingText.range(of: "</channel>") ??
                 remainingText.range(of: "<|channel|>") ??
                 remainingText.range(of: "<channel|>") {
-                return String(remainingText[endThoughtRange.upperBound...]).trimmedGeneratedAnswer()
+                return AssistantResponseFilterOutput(
+                    visibleText: String(remainingText[endThoughtRange.upperBound...]).trimmedGeneratedAnswer(),
+                    isSafeForSpeech: false
+                )
             }
 
-            return ""
+            return AssistantResponseFilterOutput(visibleText: "", isSafeForSpeech: false)
         }
 
         if let closingRange = text.range(of: "</channel>", options: .backwards) ??
             text.range(of: "<|channel|>", options: .backwards) ??
             text.range(of: "<channel|>", options: .backwards) {
-            return String(text[closingRange.upperBound...]).trimmedGeneratedAnswer()
+            return AssistantResponseFilterOutput(
+                visibleText: String(text[closingRange.upperBound...]).trimmedGeneratedAnswer(),
+                isSafeForSpeech: false
+            )
         }
 
         if text.isPotentialChannelMarkerPrefix {
-            return ""
+            return AssistantResponseFilterOutput(visibleText: "", isSafeForSpeech: false)
         }
 
-        return text.trimmedGeneratedAnswer()
+        return AssistantResponseFilterOutput(
+            visibleText: text.trimmedGeneratedAnswer(),
+            isSafeForSpeech: false
+        )
     }
 }
 
@@ -50,6 +69,7 @@ private extension String {
             "<|channel|>thought".hasPrefix(self) ||
             "<channel>final".hasPrefix(self) ||
             "<|channel|>final".hasPrefix(self) ||
+            "SPOKEN_ANSWER:".hasPrefix(self.uppercased()) ||
             "</channel>".hasPrefix(self) ||
             "<|channel|>".hasPrefix(self) ||
             "<channel|>".hasPrefix(self)
