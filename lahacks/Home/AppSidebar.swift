@@ -6,11 +6,15 @@ struct AppSidebar: View {
 
     var body: some View {
         ZStack {
-            Color.white.opacity(0.16)
+            Color.white.opacity(0.78)
                 .glassEffect(
-                    .regular.tint(.white.opacity(0.24)),
+                    .regular.tint(.white.opacity(0.7)),
                     in: .rect(cornerRadius: HomeDesign.sidebarCornerRadius)
                 )
+                .overlay {
+                    RoundedRectangle(cornerRadius: HomeDesign.sidebarCornerRadius)
+                        .fill(.white.opacity(0.42))
+                }
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -20,31 +24,32 @@ struct AppSidebar: View {
                     } label: {
                         Label(item.title, systemImage: item.systemImage)
                             .symbolVariant(selectedItem == item ? .fill : .none)
-                            .foregroundStyle(selectedItem == item ? HomeDesign.accentBlue : HomeDesign.primaryLabel)
+                            .font(.body)
+                            .foregroundStyle(selectedItem == item ? HomeDesign.selectedOrange : HomeDesign.primaryLabel)
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .contentShape(.rect)
                             .accessibilityAddTraits(selectedItem == item ? .isSelected : [])
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(selectedItem == item ? HomeDesign.accentBlue.opacity(0.14) : Color.clear)
+                    .listRowBackground(Color.clear)
                 }
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
-                .padding(.top, 24)
+                .padding(.top, 64)
 
                 GemmaReadinessIndicator(
                     isReady: conversation.isGemmaReady,
-                    title: conversation.gemmaReadinessLabel,
-                    detail: conversation.gemmaReadinessDetail
+                    title: conversation.isGemmaReady ? "All Systems Active" : conversation.gemmaReadinessLabel,
+                    detail: conversation.isGemmaReady ? "100%" : conversation.gemmaReadinessDetail
                 )
-                .padding(.horizontal, 18)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
         }
         .navigationSplitViewColumnWidth(
-            min: 260,
+            min: 220,
             ideal: HomeDesign.sidebarWidth,
-            max: 360
+            max: 260
         )
     }
 }
