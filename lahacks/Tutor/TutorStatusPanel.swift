@@ -79,7 +79,7 @@ private struct StatusIndicator: View {
         case .idle: .secondary
         case .loadingModel: .orange
         case .listening: .red
-        case .thinking: .yellow
+        case .retrieving, .thinking: .yellow
         case .speaking: .green
         case .unavailable: .red
         }

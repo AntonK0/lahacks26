@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ISBN: Equatable {
+struct ISBN: Equatable, Sendable {
     let value: String
 
     init?(barcodePayload: String) {
