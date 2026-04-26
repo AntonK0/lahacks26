@@ -170,11 +170,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M85KKJ9245;
+				DEVELOPMENT_TEAM = HDDL2T25P4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = lahacks/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan the ISBN barcode on the back of your textbook.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The microphone is used to transcribe your questions for the on-device tutor.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition is used on-device to transcribe your questions for the tutor.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
@@ -187,7 +189,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "lahacks-2026.lahacks";
+				PRODUCT_BUNDLE_IDENTIFIER = "lahacks-26.lahacks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -206,11 +208,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M85KKJ9245;
+				DEVELOPMENT_TEAM = HDDL2T25P4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = lahacks/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan the ISBN barcode on the back of your textbook.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The microphone is used to transcribe your questions for the on-device tutor.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition is used on-device to transcribe your questions for the tutor.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
@@ -223,7 +227,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "lahacks-2026.lahacks";
+				PRODUCT_BUNDLE_IDENTIFIER = "lahacks-26.lahacks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

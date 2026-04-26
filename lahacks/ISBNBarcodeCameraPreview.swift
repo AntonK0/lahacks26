@@ -15,10 +15,28 @@ struct ISBNBarcodeCameraPreview: UIViewRepresentable {
         let view = ISBNBarcodePreviewView()
         view.previewLayer.session = captureSession
         view.previewLayer.videoGravity = .resizeAspectFill
+        configurePreviewRotation(for: view)
         return view
     }
 
     func updateUIView(_ uiView: ISBNBarcodePreviewView, context: Context) {
         uiView.previewLayer.session = captureSession
+        configurePreviewRotation(for: uiView)
+    }
+
+    private func configurePreviewRotation(for view: ISBNBarcodePreviewView) {
+        guard let camera = Self.backCamera() else {
+            return
+        }
+
+        view.configureRotation(for: camera)
+    }
+
+    private static func backCamera() -> AVCaptureDevice? {
+        AVCaptureDevice.default(
+            .builtInWideAngleCamera,
+            for: .video,
+            position: .back
+        )
     }
 }
