@@ -38,9 +38,10 @@ MONGODB_COLLECTION=textbook_chunks
 MONGODB_VECTOR_INDEX=textbook_chunks_vector_index
 EMBEDDING_MODEL=google/embeddinggemma-300m
 EMBEDDING_DIM=768
+DOCUMENT_EMBEDDING_BATCH_SIZE=4
 UPLOAD_CHUNK_WORDS=320
 UPLOAD_CHUNK_OVERLAP=60
-UPLOAD_BATCH_SIZE=64
+UPLOAD_BATCH_SIZE=8
 UPSTASH_REDIS_REST_URL=https://<your-redis>.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token
 HF_TOKEN=your_huggingface_read_token
@@ -51,6 +52,8 @@ ALLOWED_ORIGINS=*
 If your MongoDB password has special characters, URL-encode it. For example, `@` becomes `%40`, `#` becomes `%23`, `&` becomes `%26`, and `+` becomes `%2B`.
 
 EmbeddingGemma is a gated Hugging Face model. Before deploying, accept model access on Hugging Face and set `HF_TOKEN` to a read token in your host environment.
+
+For memory-constrained hosts, keep `DOCUMENT_EMBEDDING_BATCH_SIZE` and `UPLOAD_BATCH_SIZE` small. The defaults above favor lower peak memory during PDF upload over maximum ingestion speed.
 
 ## Run
 
