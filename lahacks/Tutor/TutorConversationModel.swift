@@ -364,9 +364,9 @@ final class TutorConversationModel {
                 self.pipelineTask = nil
                 return
             } else {
-                textToSpeak = finalResponse
-                    .replacing("<end_of_turn>", with: "")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                textToSpeak = AssistantResponseFilter.spokenText(
+                    from: finalResponse.replacing("<end_of_turn>", with: "")
+                )
                 self.logger.info("Pipeline finished normally (raw chars=\(finalResponse.count), spoken chars=\(textToSpeak.count))")
             }
 
@@ -535,7 +535,7 @@ final class TutorConversationModel {
         let contextBlock = ragContextBlock(from: retrieval)
         var prompt = """
         <start_of_turn>user
-        You are a friendly, concise tutor running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural and somewhat enthusiastic for spoken, engaging conversation, ideally one to three sentences. Keep the responses strictly in paragraph form. Do not use any bulletpoints. Do not use any numbered lists.
+        You are a friendly, concise learning assistant running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural and enthusiastic for spoken, engaging conversation, ideally one to two sentences. Keep the responses strictly in paragraph form. Do not use any bulletpoints. Do not use any numbered lists. Do not include <think> tags or reasoning text in the spoken answer.
 
         Important output rule: when you are ready to give the answer the student should hear, write exactly SPOKEN_ANSWER: and then the answer. Do not put any reasoning, analysis, scratchpad, or hidden thought after SPOKEN_ANSWER:. <end_of_turn>
 
