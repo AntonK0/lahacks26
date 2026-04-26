@@ -26,7 +26,19 @@ enum HomeDesign {
         weight: Font.Weight = .regular,
         relativeTo textStyle: Font.TextStyle = .body
     ) -> Font {
-        .custom("SpaceGrotesk-Light", size: size, relativeTo: textStyle)
-        .weight(weight)
+        .custom(spaceGroteskPostScriptName(for: weight), size: size, relativeTo: textStyle)
+    }
+
+    private static func spaceGroteskPostScriptName(for weight: Font.Weight) -> String {
+        switch weight {
+        case .bold, .heavy, .black:
+            "SpaceGrotesk-Bold"
+        case .medium, .semibold:
+            "SpaceGrotesk-Medium"
+        case .light, .thin, .ultraLight:
+            "SpaceGrotesk-Light"
+        default:
+            "SpaceGrotesk-Regular"
+        }
     }
 }
