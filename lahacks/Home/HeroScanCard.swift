@@ -8,17 +8,17 @@ struct HeroScanCard: View {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Find a Jit")
-                        .font(HomeDesign.spaceGrotesk(size: 56, weight: .bold, relativeTo: .largeTitle))
+                        .font(HomeDesign.spaceGrotesk(size: 64, weight: .bold, relativeTo: .largeTitle))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
 
-                    Text("Start scanning the back of supported textbooks to discover new Jits!")
-                        .font(HomeDesign.spaceGrotesk(size: 30, relativeTo: .title2))
-                        .lineSpacing(3)
+                    Text("Start scanning the back of supported textbooks to discover new Jits.")
+                        .font(HomeDesign.spaceGrotesk(size: 32, relativeTo: .title2))
+                        .lineSpacing(2)
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 430, alignment: .leading)
+                        .frame(maxWidth: 437, alignment: .leading)
                 }
 
                 Button("Scan a Book", systemImage: "barcode.viewfinder", action: scanAction)
