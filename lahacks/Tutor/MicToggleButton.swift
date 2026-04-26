@@ -32,7 +32,7 @@ struct MicToggleButton: View {
                     .font(.title3)
                     .symbolEffect(
                         .pulse,
-                        isActive: state == .listening || state == .thinking || state == .speaking
+                        isActive: state == .listening || state == .retrieving || state == .thinking || state == .speaking
                     )
             }
             .padding(.horizontal, 24)
@@ -63,7 +63,7 @@ struct MicToggleButton: View {
     private var iconName: String {
         switch state {
         case .listening: "stop.circle.fill"
-        case .thinking, .speaking: "xmark.circle.fill"
+        case .retrieving, .thinking, .speaking: "xmark.circle.fill"
         case .loadingModel, .unavailable: "mic.slash.circle.fill"
         case .idle: "mic.circle.fill"
         }
@@ -72,7 +72,7 @@ struct MicToggleButton: View {
     private var label: String {
         switch state {
         case .listening: "Stop & send"
-        case .thinking: "Cancel"
+        case .retrieving, .thinking: "Cancel"
         case .speaking: "Stop speaking"
         case .loadingModel: "Loading…"
         case .unavailable: "Unavailable"
@@ -83,7 +83,7 @@ struct MicToggleButton: View {
     private var background: Color {
         switch state {
         case .listening: .red
-        case .thinking, .speaking: .orange
+        case .retrieving, .thinking, .speaking: .orange
         case .loadingModel, .unavailable: .gray
         case .idle: .accentColor
         }
@@ -92,6 +92,7 @@ struct MicToggleButton: View {
     private var accessibilityLabel: String {
         switch state {
         case .listening: "Stop listening and send"
+        case .retrieving: "Cancel textbook search"
         case .thinking: "Cancel tutor response"
         case .speaking: "Stop tutor speaking"
         case .loadingModel: "Loading tutor model"
@@ -104,6 +105,7 @@ struct MicToggleButton: View {
         switch state {
         case .idle: "Starts listening to your question."
         case .listening: "Stops listening and sends your question to the tutor."
+        case .retrieving: "Cancels the textbook search and returns to idle."
         case .thinking: "Cancels the on-device language model and returns to idle."
         case .speaking: "Stops the tutor mid-sentence and returns to idle."
         case .loadingModel: "Wait for the on-device model to finish loading."

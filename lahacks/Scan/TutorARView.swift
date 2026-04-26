@@ -125,6 +125,7 @@ struct TutorARView: View {
     private func load() async {
         do {
             let result = try await service.loadTextbook(for: isbn)
+            conversation.configureTextbook(isbn: isbn, atlasCollection: result.config.atlasCollection)
             loadState = .loaded(result.assets, atlasCollection: result.config.atlasCollection)
         } catch {
             loadState = .failed(error.localizedDescription)

@@ -38,6 +38,7 @@ final class TutorConversationModel {
         case idle
         case loadingModel(progress: Float?)
         case listening
+        case retrieving
         case thinking
         case speaking
         case unavailable
@@ -55,16 +56,21 @@ final class TutorConversationModel {
 
     private let logger = Logger(subsystem: "lahacks", category: "TutorConversationModel")
     private let llmClient = LocalLLMClient()
+    private let retrievalService = RAGRetrievalService()
     private var ttsClient: ElevenLabsTTSClient?
     private var modelLoadTask: Task<Void, Never>?
     private var pipelineTask: Task<Void, Never>?
     private var earlyStoppedText: String?
+    private var textbookISBN: ISBN?
+    private var atlasCollection: String?
+
+    private static let ragContextCharacterBudget = 5_000
 
     var isSpeaking: Bool { state == .speaking }
 
     var isModelReady: Bool {
         switch state {
-        case .idle, .listening, .thinking, .speaking:
+        case .idle, .listening, .retrieving, .thinking, .speaking:
             return isGemmaReady
         case .loadingModel, .unavailable:
             return false
@@ -84,7 +90,7 @@ final class TutorConversationModel {
 
     var canCancelPipeline: Bool {
         switch state {
-        case .thinking, .speaking:
+        case .retrieving, .thinking, .speaking:
             return true
         default:
             return false
@@ -122,6 +128,8 @@ final class TutorConversationModel {
             }
         case .listening:
             "Listening — tap the mic to send."
+        case .retrieving:
+            "Searching textbook…"
         case .thinking:
             "Thinking on-device…"
         case .speaking:
@@ -172,6 +180,11 @@ final class TutorConversationModel {
         }
     }
 
+    func configureTextbook(isbn: ISBN, atlasCollection: String?) {
+        textbookISBN = isbn
+        self.atlasCollection = atlasCollection
+    }
+
     func toggleMic() {
         switch state {
         case .listening:
@@ -219,6 +232,14 @@ final class TutorConversationModel {
             errorMessage = "Gemma is still loading. Wait for the Ready indicator before talking."
             return
         }
+        guard textbookISBN != nil, atlasCollection != nil else {
+            errorMessage = "Textbook context is still loading. Wait for the avatar to finish loading before asking a question."
+            return
+        }
+        guard MelangeSecrets.isRetrievalConfigured else {
+            errorMessage = "Textbook retrieval is not configured."
+            return
+        }
         errorMessage = nil
         speechModel.startListening()
         state = .listening
@@ -246,16 +267,53 @@ final class TutorConversationModel {
         thinkingStartedAt = .now
         earlyStoppedText = nil
 
-        let prompt = Self.chatPrompt(from: messages)
-        let assistantMessage = ChatMessage(role: .assistant, text: "")
-        messages.append(assistantMessage)
-        let assistantID = assistantMessage.id
+        guard let textbookISBN else {
+            errorMessage = "Textbook context is still loading. Try again in a moment."
+            state = .idle
+            return
+        }
 
-        state = .thinking
-        logger.info("Pipeline started (prompt=\(prompt.count, privacy: .public) chars)")
+        guard let lastUserText = messages.last(where: { $0.role == .user })?.text else {
+            state = .idle
+            return
+        }
 
-        pipelineTask = Task { [weak self, llmClient] in
+        state = .retrieving
+        logger.info("Retrieval started (message=\(lastUserText.count, privacy: .public) chars)")
+
+        pipelineTask = Task { [weak self, retrievalService, llmClient] in
             guard let self else { return }
+
+            let retrieval: RetrievalResponse
+            do {
+                retrieval = try await retrievalService.retrieveContext(
+                    isbn: textbookISBN,
+                    message: lastUserText
+                )
+                if Task.isCancelled {
+                    self.state = .idle
+                    self.thinkingStartedAt = nil
+                    self.pipelineTask = nil
+                    return
+                }
+            } catch {
+                if !Task.isCancelled {
+                    self.errorMessage = "Could not search the textbook: \(error.localizedDescription)"
+                    self.logger.error("Retrieval error: \(error.localizedDescription, privacy: .public)")
+                }
+                self.state = .idle
+                self.thinkingStartedAt = nil
+                self.pipelineTask = nil
+                return
+            }
+
+            let prompt = Self.chatPrompt(from: self.messages, retrieval: retrieval)
+            let assistantMessage = ChatMessage(role: .assistant, text: "")
+            self.messages.append(assistantMessage)
+            let assistantID = assistantMessage.id
+
+            self.state = .thinking
+            self.logger.info("Pipeline started (prompt=\(prompt.count, privacy: .public) chars, chunks=\(retrieval.chunks.count, privacy: .public))")
 
             let finalResponse: String
             do {
@@ -289,7 +347,7 @@ final class TutorConversationModel {
                 return
             } else {
                 textToSpeak = finalResponse
-                    .replacingOccurrences(of: "<end_of_turn>", with: "")
+                    .replacing("<end_of_turn>", with: "")
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 self.logger.info("Pipeline finished normally (raw chars=\(finalResponse.count), spoken chars=\(textToSpeak.count))")
             }
@@ -367,10 +425,17 @@ final class TutorConversationModel {
         messages.remove(at: index)
     }
 
-    private static func chatPrompt(from messages: [ChatMessage]) -> String {
+    private static func chatPrompt(from messages: [ChatMessage], retrieval: RetrievalResponse) -> String {
+        let contextBlock = ragContextBlock(from: retrieval)
         var prompt = """
         <start_of_turn>user
-        You are a friendly, concise tutor running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural for spoken conversation, ideally one to three sentences.<end_of_turn>
+        You are a friendly, concise tutor running fully on the student's iPad next to their textbook. Answer clearly and keep responses natural for spoken conversation, ideally one to three sentences. Keep the responses strictly in paragraph form. Do not use any bulletpoints. Do not use any numbered lists. <end_of_turn>
+
+        <start_of_turn>user
+        Use the retrieved textbook context below to ground your next answer. If the context is empty or does not contain the answer, say "I couldn't find that in the textbook context" and ask the student to try a more specific question.
+
+        Retrieved textbook context:
+        \(contextBlock)<end_of_turn>
 
         """
 
@@ -390,5 +455,48 @@ final class TutorConversationModel {
         prompt += "<start_of_turn>model\n"
 
         return prompt
+    }
+
+    private static func ragContextBlock(from retrieval: RetrievalResponse) -> String {
+        guard !retrieval.chunks.isEmpty else {
+            return "No relevant textbook chunks were returned."
+        }
+
+        var context = ""
+        for (index, chunk) in retrieval.chunks.enumerated() {
+            let snippet = ragSnippet(for: chunk, index: index)
+            if context.count + snippet.count > ragContextCharacterBudget {
+                break
+            }
+            context += snippet
+        }
+
+        return context.isEmpty ? "No retrieved chunk fit within the local model context budget." : context
+    }
+
+    private static func ragSnippet(for chunk: RetrievedChunk, index: Int) -> String {
+        var metadata: [String] = []
+        if let sourceFile = chunk.sourceFile {
+            metadata.append("source: \(sourceFile)")
+        }
+        if let page = chunk.page {
+            metadata.append("page: \(page)")
+        }
+        if let chunkIndex = chunk.chunkIndex {
+            metadata.append("chunk: \(chunkIndex)")
+        }
+
+        let title: String
+        if metadata.isEmpty {
+            title = "[Chunk \(index + 1)]"
+        } else {
+            title = "[Chunk \(index + 1) - \(metadata.joined(separator: ", "))]"
+        }
+
+        return """
+        \(title)
+        \(chunk.text)
+
+        """
     }
 }
