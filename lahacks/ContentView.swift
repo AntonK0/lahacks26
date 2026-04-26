@@ -8,22 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var scannedISBN: ISBN?
-
     var body: some View {
-        if let scannedISBN {
-            TutorARView(isbn: scannedISBN, scanAnotherBook: scanAnotherBook)
-        } else {
-            ISBNBarcodeScannerView(onISBNScanned: handleScannedISBN)
-        }
-    }
-
-    private func handleScannedISBN(_ isbn: ISBN) {
-        scannedISBN = isbn
-    }
-
-    private func scanAnotherBook() {
-        scannedISBN = nil
+        HomeView()
     }
 }
 
