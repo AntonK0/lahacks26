@@ -5,7 +5,13 @@ struct RecommendedForYouSection: View {
         HomeTextbook(id: "college-algebra", title: "College Algebra", imageName: "CollegeAlgebraCover"),
         HomeTextbook(id: "statistics", title: "Statistics", imageName: "StatisticsCover"),
         HomeTextbook(id: "college-prep", title: "College Prep", imageName: "CollegePrepCover"),
-        HomeTextbook(id: "us-history", title: "US History", imageName: "USHistoryCover")
+        HomeTextbook(id: "us-history", title: "US History", imageName: "USHistoryCover"),
+        HomeTextbook(
+            id: "introduction-to-python-programming",
+            title: "Introduction To Python Programming",
+            imageName: "IntroductionToPythonProgrammingWebCardCover"
+        ),
+        HomeTextbook(id: "psychology-2e", title: "Psychology 2e", imageName: "Psychology2eCover")
     ]
 
     var body: some View {
