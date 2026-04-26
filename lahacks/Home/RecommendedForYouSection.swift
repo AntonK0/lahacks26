@@ -45,6 +45,7 @@ struct RecommendedForYouSection: View {
             Text("Recommended For You")
                 .font(HomeDesign.spaceGrotesk(size: 32, weight: .bold, relativeTo: .title))
                 .foregroundStyle(HomeDesign.primaryLabel)
+                .padding(.top, 30)
 
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: HomeDesign.recommendationSpacing) {
