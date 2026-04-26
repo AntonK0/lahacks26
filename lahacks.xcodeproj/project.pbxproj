@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		77E82EBE2F9DD8DD00296C79 /* icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 77E82EBD2F9DD8DD00296C79 /* icon.icon */; };
 		8F0000012FA0000000000001 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 8F0000032FA0000000000001 /* ZIPFoundation */; };
 		D3C566512F9CB260003D5112 /* ZeticMLange in Frameworks */ = {isa = PBXBuildFile; productRef = D3C566502F9CB260003D5112 /* ZeticMLange */; };
 		D3C566522F9CB260003D5112 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D3C566532F9CB260003D5112 /* Accelerate.framework */; };
@@ -14,6 +15,7 @@
 
 /* Begin PBXFileReference section */
 		77DCE0232F9C78D6003EECC6 /* lahacks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lahacks.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		77E82EBD2F9DD8DD00296C79 /* icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = icon.icon; sourceTree = "<group>"; };
 		D3C566532F9CB260003D5112 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -58,6 +60,7 @@
 				77DCE0252F9C78D6003EECC6 /* lahacks */,
 				77DCE0242F9C78D6003EECC6 /* Products */,
 				D3C566542F9CB260003D5112 /* Frameworks */,
+				77E82EBD2F9DD8DD00296C79 /* icon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -147,6 +150,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				77E82EBE2F9DD8DD00296C79 /* icon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

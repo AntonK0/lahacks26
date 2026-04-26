@@ -4,10 +4,30 @@ struct DiscoverTextbooksCard: View {
     var coverSize: CGFloat = 80
 
     private let textbooks = [
-        HomeTextbook(id: "college-algebra", title: "College Algebra 2e", imageName: "CollegeAlgebraCover"),
-        HomeTextbook(id: "statistics", title: "High School Statistics", imageName: "StatisticsCover"),
-        HomeTextbook(id: "us-history", title: "U.S. History", imageName: "USHistoryCover"),
-        HomeTextbook(id: "psychology", title: "Psychology 2e", imageName: "PsychologyCover")
+        HomeTextbook(
+            id: "college-algebra",
+            title: "College Algebra 2e",
+            imageName: "CollegeAlgebraCover",
+            purchaseURL: URL(string: "https://he.kendallhunt.com/product/openstax-college-algebra-0")!
+        ),
+        HomeTextbook(
+            id: "statistics",
+            title: "High School Statistics",
+            imageName: "StatisticsCover",
+            purchaseURL: URL(string: "https://he.kendallhunt.com/product/openstax-statistics-high-school")!
+        ),
+        HomeTextbook(
+            id: "us-history",
+            title: "U.S. History",
+            imageName: "USHistoryCover",
+            purchaseURL: URL(string: "https://he.kendallhunt.com/product/openstax-us-history-0")!
+        ),
+        HomeTextbook(
+            id: "psychology",
+            title: "Psychology 2e",
+            imageName: "PsychologyCover",
+            purchaseURL: URL(string: "https://he.kendallhunt.com/product/openstax-psychology-1")!
+        )
     ]
 
     var body: some View {
