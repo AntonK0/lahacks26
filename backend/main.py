@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
@@ -14,7 +14,7 @@ import uvicorn
 from config import get_settings
 from db import get_collection
 from embeddings import embed_query
-from models import HealthResponse, RetrievalRequest, RetrievalResponse, TextbookUploadResponse
+from models import HealthResponse, RetrievalRequest, RetrievalResponse, TextbookUploadRequest, TextbookUploadResponse
 from redis_store import RedisConfigError, RedisUpdateError, set_textbook_config
 from textbook_ingestion import upload_textbook_chunks
 
@@ -66,15 +66,14 @@ def validate_pdf_upload(file: UploadFile) -> str:
 
 @app.post("/upload-textbook", response_model=TextbookUploadResponse)
 def upload_textbook(
-    isbn: str = Form(...),
-    cloudinary_url: str = Form(...),
+    request: TextbookUploadRequest = Depends(TextbookUploadRequest.as_form),
     file: UploadFile = File(...),
 ) -> TextbookUploadResponse:
-    scoped_isbn = isbn.strip()
+    scoped_isbn = request.isbn.strip()
     if not scoped_isbn:
         raise HTTPException(status_code=400, detail="isbn is required for textbook upload.")
 
-    validated_cloudinary_url = validate_cloudinary_url(cloudinary_url)
+    validated_cloudinary_url = validate_cloudinary_url(request.cloudinary_url)
     source_file = validate_pdf_upload(file)
 
     temp_path: Path | None = None
@@ -114,6 +113,13 @@ def upload_textbook(
         uploaded_count=stats.uploaded_count,
         embedding_model=settings.embedding_model,
         embedding_dim=settings.embedding_dim,
+        redis={
+            "key": scoped_isbn,
+            "fields": {
+                "cloudinary_url": validated_cloudinary_url,
+                "textbook_id": scoped_isbn,
+            },
+        },
     )
 
 
