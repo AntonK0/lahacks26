@@ -24,7 +24,7 @@ struct HomeView: View {
             }
         }
         .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarBackground(Color.white, for: .navigationBar)
+        .toolbarBackground(HomeDesign.pageBackground, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
         .task {
             conversation.prepareModel()

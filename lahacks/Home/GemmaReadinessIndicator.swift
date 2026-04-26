@@ -6,28 +6,25 @@ struct GemmaReadinessIndicator: View {
     let detail: String
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Circle()
-                .fill(isReady ? .green : .orange)
-                .frame(width: 10, height: 10)
+                .fill(isReady ? HomeDesign.systemReadyGreen : HomeDesign.scanOrange)
+                .frame(width: 12, height: 12)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(HomeDesign.primaryLabel)
+            Text(title)
+                .font(HomeDesign.spaceGrotesk(size: 15, relativeTo: .caption))
+                .foregroundStyle(HomeDesign.primaryLabel)
+                .lineLimit(1)
 
-                Text(detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            Spacer(minLength: 8)
 
-            Spacer(minLength: 0)
+            Text(detail)
+                .font(HomeDesign.spaceGrotesk(size: 15, weight: .light, relativeTo: .caption))
+                .foregroundStyle(HomeDesign.primaryLabel)
+                .lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.white.opacity(0.28), in: .rect(cornerRadius: 14))
+        .frame(minHeight: 28)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), \(detail)")
     }
