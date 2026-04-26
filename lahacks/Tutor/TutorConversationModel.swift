@@ -69,8 +69,6 @@ final class TutorConversationModel {
     private var didLogFirstSpeechSafeToken = false
 
     private static let ragContextCharacterBudget = 5_000
-    private static let acknowledgementText = "Let me check that part of the textbook."
-
     var isSpeaking: Bool { state == .speaking }
 
     var isModelReady: Bool {
@@ -136,7 +134,7 @@ final class TutorConversationModel {
         case .retrieving:
             "Searching textbook…"
         case .thinking:
-            "Thinking on-device…"
+            "Generating answer on device…"
         case .speaking:
             "Speaking…"
         case .unavailable:
@@ -328,20 +326,18 @@ final class TutorConversationModel {
             self.state = .thinking
             self.logger.info("Pipeline started (prompt=\(prompt.count, privacy: .public) chars, chunks=\(retrieval.chunks.count, privacy: .public))")
 
-            let streamingClient = await self.startStreamingSpeech()
             let finalResponse: String
             do {
                 self.logLatency("Gemma run start")
                 finalResponse = try await llmClient.generateResponse(for: prompt) { [weak self] streamed in
                     guard let self else { return }
-                    self.handleStreamed(streamed, assistantID: assistantID, ttsClient: streamingClient)
+                    self.handleStreamed(streamed, assistantID: assistantID)
                 }
             } catch {
                 if !Task.isCancelled {
                     self.errorMessage = "Tutor failed to respond: \(error.localizedDescription)"
                     self.logger.error("LLM error: \(error.localizedDescription, privacy: .public)")
                 }
-                await streamingClient?.cancel()
                 self.removeEmptyAssistantMessage(id: assistantID)
                 self.state = .idle
                 self.thinkingStartedAt = nil
@@ -357,7 +353,6 @@ final class TutorConversationModel {
                 self.logger.info("Pipeline early-stopped on <end_of_turn> (chars=\(early.count))")
             } else if cancelled {
                 self.logger.info("Pipeline cancelled by user")
-                await streamingClient?.cancel()
                 self.removeEmptyAssistantMessage(id: assistantID)
                 self.state = .idle
                 self.thinkingStartedAt = nil
@@ -373,7 +368,6 @@ final class TutorConversationModel {
             self.thinkingStartedAt = nil
 
             if textToSpeak.isEmpty {
-                await streamingClient?.cancel()
                 self.removeEmptyAssistantMessage(id: assistantID)
                 self.state = .idle
                 self.pipelineTask = nil
@@ -382,15 +376,14 @@ final class TutorConversationModel {
 
             self.replaceText(textToSpeak, in: assistantID)
             self.partialAssistantText = textToSpeak
-            await self.finishStreamingSpeech(streamingClient, textToSpeak: textToSpeak)
+            await self.speak(textToSpeak)
             self.pipelineTask = nil
         }
     }
 
     private func handleStreamed(
         _ streamed: LocalLLMStreamUpdate,
-        assistantID: ChatMessage.ID,
-        ttsClient: ElevenLabsTTSClient?
+        assistantID: ChatMessage.ID
     ) {
         rawTokenCount += 1
         if !didLogFirstRawToken {
@@ -424,52 +417,6 @@ final class TutorConversationModel {
             didLogFirstSpeechSafeToken = true
             logLatency("first speech-safe token", details: "\(streamed.visibleText.count) chars")
         }
-
-        _ = ttsClient
-    }
-
-    private func startStreamingSpeech() async -> ElevenLabsTTSClient? {
-        guard MelangeSecrets.isElevenLabsConfigured else {
-            return nil
-        }
-
-        let client = makeTimedTTSClient()
-        ttsClient = client
-        state = .speaking
-
-        do {
-            try await client.start()
-            try await client.speakAcknowledgement(Self.acknowledgementText)
-            return client
-        } catch {
-            if !Task.isCancelled {
-                logger.error("Initial ElevenLabs acknowledgement failed: \(error.localizedDescription, privacy: .public)")
-            }
-            await client.cancel()
-            ttsClient = nil
-            state = .thinking
-            return nil
-        }
-    }
-
-    private func finishStreamingSpeech(_ client: ElevenLabsTTSClient?, textToSpeak: String) async {
-        guard let client else {
-            await speak(textToSpeak)
-            return
-        }
-
-        do {
-            try await client.speak(textToSpeak)
-        } catch {
-            if !Task.isCancelled {
-                errorMessage = "Voice playback failed: \(error.localizedDescription)"
-                logger.error("ElevenLabs failed: \(error.localizedDescription, privacy: .public)")
-            }
-            await client.cancel()
-        }
-
-        ttsClient = nil
-        state = .idle
     }
 
     private func makeTimedTTSClient() -> ElevenLabsTTSClient {

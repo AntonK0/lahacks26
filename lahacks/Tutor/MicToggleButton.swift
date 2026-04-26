@@ -5,8 +5,8 @@
 //  Primary action control for the voice tutor HUD. The button has three roles:
 //
 //      • idle / listening    → mic toggle (start/stop recording)
-//      • thinking / speaking → cancel the in-flight pipeline so the user can
-//        recover from a slow Gemma response or a runaway TTS stream
+//      • retrieving / thinking / speaking → cancel the in-flight pipeline so
+//        the user can recover from a slow search, Gemma response, or TTS stream
 //      • loadingModel / unavailable → disabled placeholder
 //
 //  Doing this with a single Capsule keeps the HUD calm — there's never two
@@ -72,7 +72,8 @@ struct MicToggleButton: View {
     private var label: String {
         switch state {
         case .listening: "Stop & send"
-        case .retrieving, .thinking: "Cancel"
+        case .retrieving: "Cancel search"
+        case .thinking: "Cancel generation"
         case .speaking: "Stop speaking"
         case .loadingModel: "Loading…"
         case .unavailable: "Unavailable"
