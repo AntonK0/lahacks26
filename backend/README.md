@@ -89,6 +89,28 @@ Invoke-RestMethod `
   -Form $form
 ```
 
+The response includes MongoDB upload counts and the Redis hash written for the iOS app:
+
+```json
+{
+  "collection": "textbook_chunks",
+  "isbn": "9780000000000",
+  "cloudinary_url": "https://res.cloudinary.com/demo/raw/upload/v1/textbook.pdf",
+  "source_file": "textbook.pdf",
+  "deleted_count": 0,
+  "uploaded_count": 128,
+  "embedding_model": "google/embeddinggemma-300m",
+  "embedding_dim": 768,
+  "redis": {
+    "key": "9780000000000",
+    "fields": {
+      "cloudinary_url": "https://res.cloudinary.com/demo/raw/upload/v1/textbook.pdf",
+      "textbook_id": "9780000000000"
+    }
+  }
+}
+```
+
 The backend extracts PDF text, chunks it with the configured word window, embeds chunks with `encode_document()`, deletes existing chunks for that ISBN, and writes the replacement chunks to MongoDB Atlas with the Cloudinary URL stored on each chunk.
 
 After the MongoDB upload succeeds, the backend writes the iOS avatar lookup to Upstash Redis as a hash:

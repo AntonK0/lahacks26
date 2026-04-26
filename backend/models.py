@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from fastapi import Form
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -34,6 +35,24 @@ class RetrievalResponse(BaseModel):
     chunks: list[RetrievedChunk]
 
 
+class TextbookUploadRequest(BaseModel):
+    isbn: Annotated[str, Field(min_length=1)]
+    cloudinary_url: Annotated[str, Field(min_length=1)]
+
+    @classmethod
+    def as_form(
+        cls,
+        isbn: str = Form(...),
+        cloudinary_url: str = Form(...),
+    ) -> TextbookUploadRequest:
+        return cls(isbn=isbn, cloudinary_url=cloudinary_url)
+
+
+class RedisSyncInfo(BaseModel):
+    key: str
+    fields: dict[str, str]
+
+
 class TextbookUploadResponse(BaseModel):
     collection: str
     isbn: str
@@ -43,6 +62,7 @@ class TextbookUploadResponse(BaseModel):
     uploaded_count: int
     embedding_model: str
     embedding_dim: int
+    redis: RedisSyncInfo
 
 
 class HealthResponse(BaseModel):
